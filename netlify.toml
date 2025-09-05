@@ -1,0 +1,274 @@
+[build]
+  # No build command needed for static sites
+  publish = "."
+  
+[functions]
+  # Function configuration
+  node_bundler = "esbuild"
+
+[dev]
+  # Local development settings
+  command = "npx netlify dev"
+  port = 8888
+
+[[headers]]
+  # Security headers for all pages
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[redirects]]
+  # API redirect for local development
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+---
+
+# package.json
+{
+  "name": "gnews-aggregator",
+  "version": "1.0.0",
+  "description": "News aggregator using GNews API and Netlify Functions",
+  "main": "index.html",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build step required'",
+    "deploy": "netlify deploy --prod"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "keywords": ["news", "api", "netlify", "serverless"],
+  "author": "Your Name",
+  "license": "MIT"
+}
+
+---
+
+# .env.example
+# Copy this to .env and add your actual API key
+GNEWS_API_KEY=your_gnews_api_key_here
+
+---
+
+# README.md
+# GNews Aggregator
+
+A modern news aggregation website using GNews API and Netlify Functions.
+
+## Features
+
+- 🔄 Automatic news refresh every 30 minutes
+- 🌍 Multiple countries and languages
+- 📱 Responsive design
+- 🚀 Fast serverless functions
+- 💾 Smart caching (30-minute cache)
+- 🔍 Advanced search and filtering
+- 📰 Full article content with expand=content parameter
+
+## Quick Setup
+
+### 1. Get Your GNews API Key
+- Sign up at [GNews.io](https://gnews.io/)
+- Get your API key from the dashboard
+
+### 2. Deploy to Netlify
+
+#### Option A: Deploy from GitHub
+1. Fork/clone this repository
+2. Connect to Netlify
+3. Add environment variable: `GNEWS_API_KEY=your_key_here`
+4. Deploy!
+
+#### Option B: Drag & Drop Deploy
+1. Create these files in a folder:
+   - `index.html` (from the frontend artifact)
+   - `netlify/functions/news.js` (from the serverless function)
+   - `netlify.toml` (configuration)
+2. Drag folder to [Netlify Deploy](https://app.netlify.com/drop)
+3. Add environment variable in Netlify dashboard
+
+### 3. Local Development
+```bash
+# Install Netlify CLI
+npm install -g netlify-cli
+
+# Clone and setup
+git clone your-repo
+cd your-repo
+npm install
+
+# Add your API key to .env
+echo "GNEWS_API_KEY=your_key_here" > .env
+
+# Run locally
+netlify dev
+```
+
+## API Endpoints
+
+The serverless function supports these parameters:
+
+### Search Endpoint (default)
+- `q`: Search query (default: "latest news")
+- `lang`: Language code (default: "en")
+- `country`: Country code (default: "us")
+- `max`: Max articles (1-25, default: 10)
+- `expand`: Get full content (set to "content")
+- `from`: Start date (YYYY-MM-DD)
+- `to`: End date (YYYY-MM-DD)
+
+### Top Headlines Endpoint
+- `category`: News category (general, world, business, technology, entertainment, sports, science, health)
+- Other parameters same as search
+
+## Usage Examples
+
+```javascript
+// Search for technology news
+fetch('/.netlify/functions/news?q=technology&max=20&expand=content')
+
+// Get business headlines
+fetch('/.netlify/functions/news?category=business&country=us&max=15')
+
+// Search with date range
+fetch('/.netlify/functions/news?q=climate&from=2024-01-01&to=2024-01-31')
+```
+
+## Features Explained
+
+- **Smart Caching**: Results cached for 30 minutes to save API calls
+- **Error Handling**: Comprehensive error handling with user-friendly messages
+- **Rate Limiting**: Respects your API limits (4 requests/second, 1000/day)
+- **Auto-refresh**: Automatically updates every 30 minutes
+- **CORS Handled**: No browser CORS issues
+- **Secure**: API key never exposed to frontend
+
+## Troubleshooting
+
+### Common Issues:
+1. **"Failed to fetch"**: Check your API key in environment variables
+2. **No articles**: Try different search terms or check API status
+3. **Rate limit**: Wait and try again, or reduce refresh frequency
+
+### Environment Variables:
+Make sure `GNEWS_API_KEY` is set in:
+- Netlify dashboard (for production)
+- `.env` file (for local development)
+
+## Customization
+
+### Change Refresh Rate:
+Edit the interval in the JavaScript:
+```javascript
+// Change from 30 minutes to 10 minutes
+this.autoRefreshInterval = setInterval(() => {
+    console.log('Auto-refreshing news...');
+    this.loadNews();
+}, 10 * 60 * 1000); // 10 minutes instead of 30
+```
+
+### Add More Categories:
+Edit the category tabs in HTML:
+```html
+<div class="category-tab" data-category="your-category">Your Category</div>
+```
+
+### Customize Styling:
+All CSS is in the HTML file - modify colors, fonts, layout as needed.
+
+## API Response Format
+
+```json
+{
+  "totalArticles": 15,
+  "articles": [
+    {
+      "title": "Article Title",
+      "description": "Article description...",
+      "content": "Full article content...",
+      "url": "https://example.com/article",
+      "image": "https://example.com/image.jpg",
+      "publishedAt": "2024-01-15T10:30:00Z",
+      "source": {
+        "name": "Source Name",
+        "url": "https://source.com"
+      }
+    }
+  ],
+  "fetchedAt": "2024-01-15T10:35:00Z",
+  "endpoint": "search",
+  "parameters": {...}
+}
+```
+
+## Cost Estimation
+
+With your GNews plan (1000 requests/day):
+- **Auto-refresh every 30 min**: ~48 requests/day
+- **Manual searches**: ~50 requests/day  
+- **Total**: ~100 requests/day (well within limit)
+- **Netlify**: Free tier sufficient
+
+## Security Features
+
+- ✅ API key stored securely in environment variables
+- ✅ CORS properly configured
+- ✅ No API key exposure to frontend
+- ✅ Input sanitization
+- ✅ Rate limiting respected
+- ✅ Security headers configured
+
+## Next Steps
+
+1. **Deploy and test** the basic functionality
+2. **Add features** like:
+   - Save favorite articles
+   - Email notifications
+   - Social sharing
+   - Dark mode
+   - Article bookmarking
+3. **Monitor usage** in Netlify dashboard
+4. **Scale up** your GNews plan if needed
+
+## Support
+
+- **GNews API**: [docs.gnews.io](https://docs.gnews.io/)
+- **Netlify**: [docs.netlify.com](https://docs.netlify.com/)
+- **Issues**: Check browser console for errors
+
+---
+
+# .gitignore
+# Environment files
+.env
+.env.local
+.env.production
+
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Netlify
+.netlify/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
