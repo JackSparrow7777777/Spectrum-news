@@ -139,7 +139,7 @@ exports.handler = async (event, context) => {
       articles: processedArticles,
       fetchedAt: new Date().toISOString(),
       endpoint: endpoint,
-      parameters: { q, lang, country, max, category, expand, from, to }
+      parameters: { q, lang, country, max, category, expand, from: actualFrom, to: actualTo, timeframe, finalQuery, sources }
     };
 
     // Cache the result
