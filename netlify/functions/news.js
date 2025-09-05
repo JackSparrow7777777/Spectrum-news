@@ -33,18 +33,75 @@ exports.handler = async (event, context) => {
     
     // Set default parameters
     const {
-      q = 'latest news', // Default search query
+      q = 'latest news',
       lang = 'en',
       country = 'us',
       max = '10',
       category = '',
-      expand = 'content', // Get full article content
-      from = '', // Date from (YYYY-MM-DD)
-      to = '' // Date to (YYYY-MM-DD)
+      expand = 'content',
+      from = '',
+      to = '',
+      sources = '',
+      timeframe = ''
     } = queryParams;
 
-    // Create cache key
-    const cacheKey = JSON.stringify({ q, lang, country, max, category, expand, from, to });
+    // Handle timeframe shortcuts - DEFINE THESE FIRST
+    let actualFrom = from;
+    let actualTo = to;
+    
+    if (timeframe) {
+      const now = new Date();
+      const formatDate = (date) => date.toISOString().split('T')[0];
+      
+      switch (timeframe) {
+        case '1day':
+          const yesterday = new Date(now);
+          yesterday.setDate(now.getDate() - 1);
+          actualFrom = formatDate(yesterday);
+          actualTo = formatDate(now);
+          break;
+        case '1week':
+          const weekAgo = new Date(now);
+          weekAgo.setDate(now.getDate() - 7);
+          actualFrom = formatDate(weekAgo);
+          actualTo = formatDate(now);
+          break;
+        case '1month':
+          const monthAgo = new Date(now);
+          monthAgo.setMonth(now.getMonth() - 1);
+          actualFrom = formatDate(monthAgo);
+          actualTo = formatDate(now);
+          break;
+        case '1year':
+          const yearAgo = new Date(now);
+          yearAgo.setFullYear(now.getFullYear() - 1);
+          actualFrom = formatDate(yearAgo);
+          actualTo = formatDate(now);
+          break;
+      }
+    }
+
+    // Premium news sources
+    const premiumSources = [
+      'nytimes.com',
+      'washingtonpost.com',
+      'wsj.com',
+      'cnn.com',
+      'bbc.com',
+      'reuters.com',
+      'apnews.com',
+      'bloomberg.com',
+      'theguardian.com',
+      'npr.org',
+      'usatoday.com',
+      'latimes.com',
+      'politico.com',
+      'axios.com',
+      'economist.com'
+    ];
+
+    // Create cache key - NOW variables are properly defined
+    const cacheKey = JSON.stringify({ q, lang, country, max, category, expand, actualFrom, actualTo, sources, timeframe });
     
     // Check cache first
     const cachedResult = cache.get(cacheKey);
@@ -60,34 +117,52 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Determine endpoint based on category
-    let endpoint = 'search';
-    if (category) {
-      endpoint = 'top-headlines';
+    // Build search query
+    let searchQuery = q;
+    
+    // Handle category-specific searches
+    if (category && category !== '') {
+      const categoryKeywords = {
+        'general': 'news OR headlines',
+        'world': 'world OR international',
+        'business': 'business OR economy',
+        'technology': 'technology OR tech',
+        'entertainment': 'entertainment',
+        'sports': 'sports',
+        'science': 'science',
+        'health': 'health'
+      };
+      
+      const categoryTerm = categoryKeywords[category] || category;
+      
+      if (q === 'latest news') {
+        searchQuery = categoryTerm;
+      } else {
+        searchQuery = `(${q}) AND (${categoryTerm})`;
+      }
     }
 
-    // Build API URL
-    const apiUrl = new URL(`https://gnews.io/api/v4/${endpoint}`);
-    
-    // Add parameters to URL
+    // Add premium source filtering if requested
+    if (sources === 'premium') {
+      const siteQueries = premiumSources.slice(0, 5).map(source => `site:${source}`).join(' OR ');
+      searchQuery = `(${searchQuery}) AND (${siteQueries})`;
+    }
+
+    // Build API URL - always use search endpoint
+    const apiUrl = new URL('https://gnews.io/api/v4/search');
     apiUrl.searchParams.append('apikey', process.env.GNEWS_API_KEY);
     apiUrl.searchParams.append('lang', lang);
     apiUrl.searchParams.append('max', max);
     apiUrl.searchParams.append('expand', expand);
-
-    if (endpoint === 'search') {
-      apiUrl.searchParams.append('q', q);
-      if (country) apiUrl.searchParams.append('country', country);
-      if (from) apiUrl.searchParams.append('from', from);
-      if (to) apiUrl.searchParams.append('to', to);
-    } else if (endpoint === 'top-headlines') {
-      apiUrl.searchParams.append('category', category);
-      if (country) apiUrl.searchParams.append('country', country);
-    }
+    apiUrl.searchParams.append('q', searchQuery);
+    
+    if (country) apiUrl.searchParams.append('country', country);
+    if (actualFrom) apiUrl.searchParams.append('from', actualFrom);
+    if (actualTo) apiUrl.searchParams.append('to', actualTo);
 
     console.log('Fetching from:', apiUrl.toString().replace(process.env.GNEWS_API_KEY, 'HIDDEN'));
 
-    // Make API request (using built-in fetch in Node 18+)
+    // Make API request
     const response = await fetch(apiUrl.toString());
     
     if (!response.ok) {
@@ -120,7 +195,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Process articles - clean up and standardize data
+    // Process articles
     const processedArticles = data.articles.map(article => ({
       title: article.title || 'No title',
       description: article.description || 'No description',
@@ -138,8 +213,7 @@ exports.handler = async (event, context) => {
       totalArticles: data.totalArticles || processedArticles.length,
       articles: processedArticles,
       fetchedAt: new Date().toISOString(),
-      endpoint: endpoint,
-      parameters: { q, lang, country, max, category, expand, from: actualFrom, to: actualTo, timeframe, finalQuery, sources }
+      parameters: { q, searchQuery, lang, country, max, category, expand, actualFrom, actualTo, timeframe, sources }
     };
 
     // Cache the result
@@ -148,7 +222,7 @@ exports.handler = async (event, context) => {
       timestamp: Date.now()
     });
 
-    // Clean up old cache entries (keep cache size reasonable)
+    // Clean up old cache entries
     if (cache.size > 100) {
       const oldestKey = cache.keys().next().value;
       cache.delete(oldestKey);
