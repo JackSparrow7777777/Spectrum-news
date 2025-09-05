@@ -291,6 +291,16 @@
                 flex-direction: column;
                 align-items: stretch;
             }
+
+            getTimeframeText(timeframe) {
+                const timeframeMap = {
+                    '1day': 'Past 24 hours',
+                    '1week': 'Past week',
+                    '1month': 'Past month',
+                    '1year': 'Past year'
+                };
+                return timeframeMap[timeframe] || '';
+            }
             
             .search-input {
                 min-width: auto;
