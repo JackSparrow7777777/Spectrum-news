@@ -87,7 +87,7 @@ exports.handler = async (event, context) => {
 
     console.log('Fetching from:', apiUrl.toString().replace(process.env.GNEWS_API_KEY, 'HIDDEN'));
 
-    // Make API request
+    // Make API request (using built-in fetch in Node 18+)
     const response = await fetch(apiUrl.toString());
     
     if (!response.ok) {
