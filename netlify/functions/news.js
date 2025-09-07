@@ -103,7 +103,7 @@ exports.handler = async (event, context) => {
     // Add source filtering
     if (sources === 'premium' || sources === 'balanced' || sources === 'mainstream') {
       const siteQueries = premiumSources.slice(0, 5).map(source => `site:${source}`).join(' OR ');
-      searchQuery = `(${searchQuery}) AND (${siteQueries})`;
+      searchQuery = `searchQuery = q === 'latest news' ? categoryTerm : `${q} ${categoryTerm}`;`;
     }
 
     console.log('Search query built:', searchQuery);
