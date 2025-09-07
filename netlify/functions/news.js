@@ -1,51 +1,43 @@
 const cache = new Map();
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+const CACHE_DURATION = 30 * 60 * 1000;
 
 exports.handler = async (event, context) => {
-  // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
   };
 
-  // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: '',
-    };
+    return { statusCode: 200, headers, body: '' };
   }
 
-  // Only allow GET requests
   if (event.httpMethod !== 'GET') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   try {
+    console.log('Function started successfully');
+    
     // Extract query parameters
     const queryParams = event.queryStringParameters || {};
     
-    // Set default parameters
     const {
       q = 'latest news',
       lang = 'en',
       country = 'us',
-      max = '10',
+      max = '25',
       category = '',
       expand = 'content',
       from = '',
       to = '',
-      sources = '',
+      sources = 'premium',
       timeframe = ''
     } = queryParams;
 
-    // Handle timeframe shortcuts - DEFINE THESE FIRST
+    console.log('Parameters extracted:', { q, sources, timeframe });
+
+    // Handle timeframe shortcuts
     let actualFrom = from;
     let actualTo = to;
     
@@ -81,46 +73,17 @@ exports.handler = async (event, context) => {
       }
     }
 
-    // Premium news sources
-    const premiumSources = [
-      'nytimes.com',
-      'washingtonpost.com',
-      'wsj.com',
-      'cnn.com',
-      'bbc.com',
-      'reuters.com',
-      'apnews.com',
-      'bloomberg.com',
-      'theguardian.com',
-      'npr.org',
-      'usatoday.com',
-      'latimes.com',
-      'politico.com',
-      'axios.com',
-      'economist.com'
-    ];
+    console.log('Timeframe processed');
 
-    // Create cache key - NOW variables are properly defined
-    const cacheKey = JSON.stringify({ q, lang, country, max, category, expand, actualFrom, actualTo, sources, timeframe });
-    
-    // Check cache first
-    const cachedResult = cache.get(cacheKey);
-    if (cachedResult && Date.now() - cachedResult.timestamp < cacheTimeout) {
-      console.log('Returning cached result');
-      return {
-        statusCode: 200,
-        headers: {
-          ...headers,
-          'X-Cache': 'HIT',
-        },
-        body: JSON.stringify(cachedResult.data),
-      };
-    }
+    // Basic source filtering (simplified)
+    const premiumSources = [
+      'nytimes.com', 'washingtonpost.com', 'wsj.com', 'cnn.com', 'bbc.com',
+      'reuters.com', 'apnews.com', 'bloomberg.com'
+    ];
 
     // Build search query
     let searchQuery = q;
     
-    // Handle category-specific searches
     if (category && category !== '') {
       const categoryKeywords = {
         'general': 'news OR headlines',
@@ -134,21 +97,18 @@ exports.handler = async (event, context) => {
       };
       
       const categoryTerm = categoryKeywords[category] || category;
-      
-      if (q === 'latest news') {
-        searchQuery = categoryTerm;
-      } else {
-        searchQuery = `(${q}) AND (${categoryTerm})`;
-      }
+      searchQuery = q === 'latest news' ? categoryTerm : `(${q}) AND (${categoryTerm})`;
     }
 
-    // Add premium source filtering if requested
-    if (sources === 'premium') {
+    // Add source filtering
+    if (sources === 'premium' || sources === 'balanced' || sources === 'mainstream') {
       const siteQueries = premiumSources.slice(0, 5).map(source => `site:${source}`).join(' OR ');
       searchQuery = `(${searchQuery}) AND (${siteQueries})`;
     }
 
-    // Build API URL - always use search endpoint
+    console.log('Search query built:', searchQuery);
+
+    // Build API URL
     const apiUrl = new URL('https://gnews.io/api/v4/search');
     apiUrl.searchParams.append('apikey', process.env.GNEWS_API_KEY);
     apiUrl.searchParams.append('lang', lang);
@@ -160,7 +120,7 @@ exports.handler = async (event, context) => {
     if (actualFrom) apiUrl.searchParams.append('from', actualFrom);
     if (actualTo) apiUrl.searchParams.append('to', actualTo);
 
-    console.log('Fetching from:', apiUrl.toString().replace(process.env.GNEWS_API_KEY, 'HIDDEN'));
+    console.log('About to fetch from GNews API');
 
     // Make API request
     const response = await fetch(apiUrl.toString());
@@ -168,85 +128,98 @@ exports.handler = async (event, context) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('GNews API Error:', response.status, errorText);
-      
       return {
         statusCode: response.status,
         headers,
-        body: JSON.stringify({ 
-          error: 'Failed to fetch news',
-          status: response.status,
-          message: errorText
-        }),
+        body: JSON.stringify({ error: 'Failed to fetch news', status: response.status, message: errorText }),
       };
     }
 
     const data = await response.json();
+    console.log('GNews API response received, articles:', data.articles?.length || 0);
     
-    // Validate response structure
     if (!data.articles || !Array.isArray(data.articles)) {
       console.error('Invalid response structure:', data);
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ 
-          error: 'Invalid response from news API',
-          received: data
-        }),
+        body: JSON.stringify({ error: 'Invalid response from news API' }),
       };
     }
 
-    // Process articles
-    const processedArticles = data.articles.map(article => ({
-      title: article.title || 'No title',
-      description: article.description || 'No description',
-      content: article.content || article.description || 'No content available',
-      url: article.url,
-      image: article.image,
-      publishedAt: article.publishedAt,
-      source: {
-        name: article.source?.name || 'Unknown Source',
-        url: article.source?.url || ''
+    // Process articles with basic classification
+    const processedArticles = data.articles.map(article => {
+      // Simple source classification
+      let bias = 'unknown';
+      let reliability = 'medium';
+      
+      const sourceName = article.source?.name?.toLowerCase() || '';
+      const sourceUrl = article.source?.url || '';
+      
+      if (sourceName.includes('nytimes') || sourceUrl.includes('nytimes.com')) {
+        bias = 'center-left';
+        reliability = 'high';
+      } else if (sourceName.includes('wsj') || sourceUrl.includes('wsj.com')) {
+        bias = 'center-right';
+        reliability = 'high';
+      } else if (sourceName.includes('reuters') || sourceUrl.includes('reuters.com')) {
+        bias = 'center';
+        reliability = 'very-high';
+      } else if (sourceName.includes('cnn') || sourceUrl.includes('cnn.com')) {
+        bias = 'left-lean';
+        reliability = 'high';
+      } else if (sourceName.includes('bbc') || sourceUrl.includes('bbc.com')) {
+        bias = 'center';
+        reliability = 'high';
       }
-    }));
-
-    const processedData = {
-      totalArticles: data.totalArticles || processedArticles.length,
-      articles: processedArticles,
-      fetchedAt: new Date().toISOString(),
-      parameters: { q, searchQuery, lang, country, max, category, expand, actualFrom, actualTo, timeframe, sources }
-    };
-
-    // Cache the result
-    cache.set(cacheKey, {
-      data: processedData,
-      timestamp: Date.now()
+      
+      return {
+        title: article.title || 'No title',
+        description: article.description || 'No description',
+        content: article.content || article.description || 'No content available',
+        url: article.url,
+        image: article.image,
+        publishedAt: article.publishedAt,
+        source: {
+          name: article.source?.name || 'Unknown Source',
+          url: article.source?.url || '',
+          classification: {
+            bias: bias,
+            reliability: reliability,
+            name: article.source?.name || 'Unknown Source'
+          }
+        }
+      };
     });
 
-    // Clean up old cache entries
-    if (cache.size > 100) {
-      const oldestKey = cache.keys().next().value;
-      cache.delete(oldestKey);
-    }
+    console.log('Articles processed successfully');
+
+    const processedData = {
+      totalArticles: processedArticles.length,
+      articles: processedArticles,
+      hasGroups: false,
+      sourceTypes: sources,
+      fetchedAt: new Date().toISOString(),
+      debug: 'Simplified version working'
+    };
+
+    console.log('Response prepared, sending back');
 
     return {
       statusCode: 200,
-      headers: {
-        ...headers,
-        'X-Cache': 'MISS',
-        'Content-Type': 'application/json',
-      },
+      headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify(processedData),
     };
 
   } catch (error) {
     console.error('Function error:', error);
-    
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
-        error: 'Internal server error',
+        error: 'Internal server error', 
         message: error.message,
+        stack: error.stack,
         timestamp: new Date().toISOString()
       }),
     };
