@@ -195,12 +195,13 @@ exports.handler = async (event, context) => {
     console.log('Articles processed successfully');
 
     const processedData = {
-      totalArticles: processedArticles.length,
-      articles: processedArticles,
+      totalArticles: finalArticles.length,
+      originalTotal: processedArticles.length,
+      articles: finalArticles,
       hasGroups: false,
       sourceTypes: sources,
       fetchedAt: new Date().toISOString(),
-      debug: 'Simplified version working'
+      debug: 'Simplified version working - post-filtering approach'
     };
 
     console.log('Response prepared, sending back');
