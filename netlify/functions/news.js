@@ -105,7 +105,7 @@ exports.handler = async (event, context) => {
     
     // Check cache first
     const cachedResult = cache.get(cacheKey);
-    if (cachedResult && Date.now() - cachedResult.timestamp < CACHE_DURATION) {
+    if (cachedResult && Date.now() - cachedResult.timestamp < cacheTimeout) {
       console.log('Returning cached result');
       return {
         statusCode: 200,
