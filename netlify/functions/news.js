@@ -91,7 +91,6 @@ exports.handler = async (event, context) => {
       };
       
       const categoryTerm = categoryKeywords[category] || category;
-      // Simple concatenation, no complex operators
       searchQuery = q === 'latest news' ? categoryTerm : `${q} ${categoryTerm}`;
     }
 
@@ -136,47 +135,94 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Process articles with source filtering AFTER getting results
+    // Process articles with improved source detection
     const processedArticles = data.articles.map(article => {
       let bias = 'unknown';
       let reliability = 'medium';
       let isTargetSource = false;
       
       const sourceName = article.source?.name?.toLowerCase() || '';
-      const sourceUrl = article.source?.url || '';
+      const sourceUrl = article.source?.url?.toLowerCase() || '';
       
-      // Check for target sources
-      if (sourceName.includes('nytimes') || sourceUrl.includes('nytimes.com')) {
+      // DEBUG: Log actual source names
+      console.log(`Source: "${article.source?.name}" - URL: "${sourceUrl}"`);
+      
+      // UPDATED source detection based on actual GNews data
+      if (sourceName.includes('washington') && sourceName.includes('post')) {
         bias = 'center-left';
         reliability = 'high';
         isTargetSource = true;
-      } else if (sourceName.includes('wall street journal') || sourceName.includes('wsj') || sourceUrl.includes('wsj.com')) {
-        bias = 'center-right';
-        reliability = 'high';
-        isTargetSource = true;
-      } else if (sourceName.includes('reuters') || sourceUrl.includes('reuters.com')) {
+      } else if (sourceName.includes('associated press') || sourceName.includes('ap news')) {
         bias = 'center';
         reliability = 'very-high';
         isTargetSource = true;
-      } else if (sourceName.includes('cnn') || sourceUrl.includes('cnn.com')) {
+      } else if (sourceName.includes('npr')) {
+        bias = 'center-left';
+        reliability = 'high';
+        isTargetSource = true;
+      } else if (sourceName.includes('boston') && sourceName.includes('globe')) {
+        bias = 'center-left';
+        reliability = 'high';
+        isTargetSource = true;
+      } else if (sourceName.includes('fortune')) {
+        bias = 'center';
+        reliability = 'medium-high';
+        isTargetSource = true;
+      } else if (sourceName.includes('nbc')) {
+        bias = 'center-left';
+        reliability = 'high';
+        isTargetSource = true;
+      } else if (sourceName.includes('usa today') || sourceName.includes('usatoday')) {
+        bias = 'center';
+        reliability = 'medium-high';
+        isTargetSource = true;
+      } else if (sourceName.includes('fox')) {
+        bias = 'right-lean';
+        reliability = 'medium';
+        isTargetSource = true;
+      } else if (sourceName.includes('newsweek')) {
+        bias = 'center-right';
+        reliability = 'medium';
+        isTargetSource = true;
+      } else if (sourceName.includes('baltimore') && sourceName.includes('sun')) {
+        bias = 'center-left';
+        reliability = 'medium-high';
+        isTargetSource = true;
+      } else if (sourceName.includes('boston') && sourceName.includes('herald')) {
+        bias = 'center-right';
+        reliability = 'medium';
+        isTargetSource = true;
+      } else if (sourceName.includes('reuters')) {
+        bias = 'center';
+        reliability = 'very-high';
+        isTargetSource = true;
+      } else if (sourceName.includes('bbc')) {
+        bias = 'center';
+        reliability = 'high';
+        isTargetSource = true;
+      } else if (sourceName.includes('bloomberg')) {
+        bias = 'center';
+        reliability = 'high';
+        isTargetSource = true;
+      } else if (sourceName.includes('cnn')) {
         bias = 'left-lean';
         reliability = 'high';
         isTargetSource = true;
-      } else if (sourceName.includes('bbc') || sourceUrl.includes('bbc.com')) {
-        bias = 'center';
-        reliability = 'high';
-        isTargetSource = true;
-      } else if (sourceName.includes('washington post') || sourceUrl.includes('washingtonpost.com')) {
+      } else if (sourceName.includes('times') && (sourceName.includes('new york') || sourceName.includes('ny'))) {
         bias = 'center-left';
         reliability = 'high';
         isTargetSource = true;
-      } else if (sourceName.includes('bloomberg') || sourceUrl.includes('bloomberg.com')) {
-        bias = 'center';
+      } else if (sourceName.includes('wall street') || sourceName.includes('wsj')) {
+        bias = 'center-right';
         reliability = 'high';
         isTargetSource = true;
-      } else if (sourceName.includes('associated press') || sourceName.includes('ap news') || sourceUrl.includes('apnews.com')) {
+      } else if (sourceName.includes('espn')) {
         bias = 'center';
-        reliability = 'very-high';
+        reliability = 'medium-high';
+        isTargetSource = true;
+      } else if (sourceName.includes('sports illustrated')) {
+        bias = 'center';
+        reliability = 'medium';
         isTargetSource = true;
       }
       
@@ -201,6 +247,7 @@ exports.handler = async (event, context) => {
     });
 
     console.log('Articles processed successfully');
+    console.log('Target sources found:', processedArticles.filter(a => a.isTargetSource).length);
 
     // Filter to premium sources if requested
     let finalArticles = processedArticles;
@@ -223,7 +270,7 @@ exports.handler = async (event, context) => {
       hasGroups: false,
       sourceTypes: sources,
       fetchedAt: new Date().toISOString(),
-      debug: 'Post-filtering approach - no complex queries'
+      debug: 'Improved source detection patterns'
     };
 
     console.log('Response prepared, sending back');
