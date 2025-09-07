@@ -204,7 +204,7 @@ exports.handler = async (event, context) => {
 
     // Filter to premium sources if requested
     let finalArticles = processedArticles;
-    if (false) {  // Temporarily disable filtering
+    if (sources === 'premium' || sources === 'balanced' || sources === 'mainstream') {
       finalArticles = processedArticles.filter(article => article.isTargetSource);
       console.log(`Filtered from ${processedArticles.length} to ${finalArticles.length} target source articles`);
     }
