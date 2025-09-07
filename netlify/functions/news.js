@@ -75,21 +75,15 @@ exports.handler = async (event, context) => {
 
     console.log('Timeframe processed');
 
-    // Basic source filtering (simplified)
-    const premiumSources = [
-      'nytimes.com', 'washingtonpost.com', 'wsj.com', 'cnn.com', 'bbc.com',
-      'reuters.com', 'apnews.com', 'bloomberg.com'
-    ];
-
-    // Build search query
+    // Build simple search query - NO COMPLEX SYNTAX
     let searchQuery = q;
     
     if (category && category !== '') {
       const categoryKeywords = {
-        'general': 'news OR headlines',
-        'world': 'world OR international',
-        'business': 'business OR economy',
-        'technology': 'technology OR tech',
+        'general': 'news',
+        'world': 'world',
+        'business': 'business',
+        'technology': 'technology',
         'entertainment': 'entertainment',
         'sports': 'sports',
         'science': 'science',
@@ -97,18 +91,13 @@ exports.handler = async (event, context) => {
       };
       
       const categoryTerm = categoryKeywords[category] || category;
-      searchQuery = q === 'latest news' ? categoryTerm : `(${q}) AND (${categoryTerm})`;
-    }
-
-    // Add source filtering
-    if (sources === 'premium' || sources === 'balanced' || sources === 'mainstream') {
-      const siteQueries = premiumSources.slice(0, 5).map(source => `site:${source}`).join(' OR ');
-      searchQuery = `searchQuery = q === 'latest news' ? categoryTerm : `${q} ${categoryTerm}`;`;
+      // Simple concatenation, no complex operators
+      searchQuery = q === 'latest news' ? categoryTerm : `${q} ${categoryTerm}`;
     }
 
     console.log('Search query built:', searchQuery);
 
-    // Build API URL
+    // Build API URL - NO SITE FILTERING IN QUERY
     const apiUrl = new URL('https://gnews.io/api/v4/search');
     apiUrl.searchParams.append('apikey', process.env.GNEWS_API_KEY);
     apiUrl.searchParams.append('lang', lang);
@@ -147,30 +136,48 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Process articles with basic classification
+    // Process articles with source filtering AFTER getting results
     const processedArticles = data.articles.map(article => {
-      // Simple source classification
       let bias = 'unknown';
       let reliability = 'medium';
+      let isTargetSource = false;
       
       const sourceName = article.source?.name?.toLowerCase() || '';
       const sourceUrl = article.source?.url || '';
       
+      // Check for target sources
       if (sourceName.includes('nytimes') || sourceUrl.includes('nytimes.com')) {
         bias = 'center-left';
         reliability = 'high';
-      } else if (sourceName.includes('wsj') || sourceUrl.includes('wsj.com')) {
+        isTargetSource = true;
+      } else if (sourceName.includes('wall street journal') || sourceName.includes('wsj') || sourceUrl.includes('wsj.com')) {
         bias = 'center-right';
         reliability = 'high';
+        isTargetSource = true;
       } else if (sourceName.includes('reuters') || sourceUrl.includes('reuters.com')) {
         bias = 'center';
         reliability = 'very-high';
+        isTargetSource = true;
       } else if (sourceName.includes('cnn') || sourceUrl.includes('cnn.com')) {
         bias = 'left-lean';
         reliability = 'high';
+        isTargetSource = true;
       } else if (sourceName.includes('bbc') || sourceUrl.includes('bbc.com')) {
         bias = 'center';
         reliability = 'high';
+        isTargetSource = true;
+      } else if (sourceName.includes('washington post') || sourceUrl.includes('washingtonpost.com')) {
+        bias = 'center-left';
+        reliability = 'high';
+        isTargetSource = true;
+      } else if (sourceName.includes('bloomberg') || sourceUrl.includes('bloomberg.com')) {
+        bias = 'center';
+        reliability = 'high';
+        isTargetSource = true;
+      } else if (sourceName.includes('associated press') || sourceName.includes('ap news') || sourceUrl.includes('apnews.com')) {
+        bias = 'center';
+        reliability = 'very-high';
+        isTargetSource = true;
       }
       
       return {
@@ -180,6 +187,7 @@ exports.handler = async (event, context) => {
         url: article.url,
         image: article.image,
         publishedAt: article.publishedAt,
+        isTargetSource: isTargetSource,
         source: {
           name: article.source?.name || 'Unknown Source',
           url: article.source?.url || '',
@@ -194,14 +202,28 @@ exports.handler = async (event, context) => {
 
     console.log('Articles processed successfully');
 
+    // Filter to premium sources if requested
+    let finalArticles = processedArticles;
+    if (sources === 'premium' || sources === 'balanced' || sources === 'mainstream') {
+      finalArticles = processedArticles.filter(article => article.isTargetSource);
+      console.log(`Filtered from ${processedArticles.length} to ${finalArticles.length} target source articles`);
+    }
+
+    // Remove isTargetSource flag before sending
+    finalArticles = finalArticles.map(article => {
+      const { isTargetSource, ...cleanArticle } = article;
+      return cleanArticle;
+    });
+
     const processedData = {
       totalArticles: finalArticles.length,
       originalTotal: processedArticles.length,
+      filteredOut: processedArticles.length - finalArticles.length,
       articles: finalArticles,
       hasGroups: false,
       sourceTypes: sources,
       fetchedAt: new Date().toISOString(),
-      debug: 'Simplified version working - post-filtering approach'
+      debug: 'Post-filtering approach - no complex queries'
     };
 
     console.log('Response prepared, sending back');
