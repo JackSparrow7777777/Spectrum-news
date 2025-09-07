@@ -256,21 +256,21 @@ exports.handler = async (event, context) => {
       console.log(`Filtered from ${processedArticles.length} to ${finalArticles.length} target source articles`);
     }
 
-    // Remove isTargetSource flag before sending
+    // Remove isTargetSource flag before sending - no longer needed
     finalArticles = finalArticles.map(article => {
       const { isTargetSource, ...cleanArticle } = article;
       return cleanArticle;
     });
 
     const processedData = {
-      totalArticles: finalArticles.length,
+      totalArticles: finalArticles.length, // Should match the max parameter (10, 20, or 25)
       originalTotal: processedArticles.length,
-      filteredOut: processedArticles.length - finalArticles.length,
+      classifiedSources: processedArticles.filter(a => a.isTargetSource).length,
       articles: finalArticles,
       hasGroups: false,
       sourceTypes: sources,
       fetchedAt: new Date().toISOString(),
-      debug: 'Improved source detection patterns'
+      debug: 'Showing all articles with bias labels where identified'
     };
 
     console.log('Response prepared, sending back');
