@@ -983,7 +983,10 @@
             try {
                 var searchInput = document.getElementById('search-input');
                 var searchQuery = searchInput ? searchInput.value.trim() || 'latest news' : 'latest news';
+                var timeRange = document.getElementById('time-range');
+                var timeValue = timeRange ? timeRange.value : '7d';
                 
+                // Build API parameters exactly as your Netlify function expects
                 var params = new URLSearchParams({
                     q: searchQuery,
                     country: 'us',
@@ -992,28 +995,66 @@
                     expand: 'content'
                 });
 
+                // Add category if selected (for top-headlines endpoint)
                 if (currentCategory) {
                     params.set('category', currentCategory);
                 }
 
-                console.log('Attempting to load news from API...');
+                // Add date filters based on time range
+                if (timeValue !== 'all') {
+                    var now = new Date();
+                    var fromDate;
+                    
+                    switch (timeValue) {
+                        case '24h':
+                            fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                            break;
+                        case '7d':
+                            fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                            break;
+                        case '30d':
+                            fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                            break;
+                    }
+                    
+                    if (fromDate) {
+                        params.set('from', fromDate.toISOString().split('T')[0]);
+                    }
+                }
+
+                console.log('Fetching from Netlify function with params:', params.toString());
                 
+                // Call your existing Netlify function
                 fetch('/.netlify/functions/news?' + params.toString())
                     .then(function(response) {
+                        console.log('Response status:', response.status);
+                        
                         if (!response.ok) {
-                            throw new Error('Network response was not ok');
+                            throw new Error('HTTP ' + response.status + ': ' + response.statusText);
                         }
                         return response.json();
                     })
                     .then(function(data) {
+                        console.log('API Response received:', data);
+                        
                         if (data.error) {
                             throw new Error(data.error);
                         }
 
+                        // Check if articles exist in response
                         if (!data.articles || !Array.isArray(data.articles)) {
-                            throw new Error('No articles found');
+                            console.warn('No articles in response, using demo data');
+                            showDemoWithNotice('API returned no articles');
+                            return;
                         }
 
+                        if (data.articles.length === 0) {
+                            console.warn('Empty articles array, using demo data');
+                            showDemoWithNotice('No articles found for current search');
+                            return;
+                        }
+
+                        // Process real articles from your GNews API
                         allArticles = data.articles.map(function(article, index) {
                             return {
                                 id: index + 1,
@@ -1024,24 +1065,72 @@
                                 image: article.image || null,
                                 source: (article.source && article.source.name) || 'Unknown Source',
                                 published: article.publishedAt || new Date().toISOString(),
-                                topic: currentCategory || 'general',
+                                topic: currentCategory || inferTopic(article.title || '', article.description || ''),
                                 bias: inferBias((article.source && article.source.name) || 'Unknown Source'),
                                 reliability: inferReliability((article.source && article.source.name) || 'Unknown Source')
                             };
                         });
 
+                        // Show success message for real data
+                        var container = document.getElementById('news-container');
+                        container.innerHTML = '<div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #c3e6cb;">📡 <strong>Live News:</strong> Loaded ' + allArticles.length + ' real-time articles from GNews API via Netlify function.</div>';
+                        
                         renderArticles(allArticles);
-                        console.log('Loaded ' + allArticles.length + ' articles from API');
+                        console.log('Successfully loaded ' + allArticles.length + ' real articles from GNews API');
+
                     })
                     .catch(function(error) {
-                        console.error('API failed, loading demo data:', error);
-                        loadDemoData();
+                        console.error('Error calling Netlify function:', error);
+                        showDemoWithNotice('API temporarily unavailable: ' + error.message);
                     });
 
             } catch (error) {
                 console.error('Error in loadNews:', error);
-                loadDemoData();
+                showDemoWithNotice('Unexpected error: ' + error.message);
             }
+        }
+
+        function showDemoWithNotice(reason) {
+            console.log('Showing demo data due to:', reason);
+            loadDemoData();
+            
+            // Update the demo notice to show the reason
+            var container = document.getElementById('news-container');
+            var demoNotice = container.querySelector('.demo-notice');
+            if (demoNotice) {
+                demoNotice.innerHTML = '📰 <strong>Demo Mode:</strong> ' + reason + '. Showing sample articles for demonstration.';
+            }
+        }
+
+        function inferTopic(title, description) {
+            var text = (title + ' ' + description).toLowerCase();
+            
+            if (text.indexOf('election') !== -1 || text.indexOf('politics') !== -1 || text.indexOf('government') !== -1) {
+                return 'general';
+            }
+            if (text.indexOf('business') !== -1 || text.indexOf('economy') !== -1 || text.indexOf('stock') !== -1) {
+                return 'business';
+            }
+            if (text.indexOf('technology') !== -1 || text.indexOf('tech') !== -1 || text.indexOf('ai') !== -1) {
+                return 'technology';
+            }
+            if (text.indexOf('health') !== -1 || text.indexOf('medical') !== -1 || text.indexOf('disease') !== -1) {
+                return 'health';
+            }
+            if (text.indexOf('sports') !== -1 || text.indexOf('football') !== -1 || text.indexOf('basketball') !== -1) {
+                return 'sports';
+            }
+            if (text.indexOf('entertainment') !== -1 || text.indexOf('movie') !== -1 || text.indexOf('music') !== -1) {
+                return 'entertainment';
+            }
+            if (text.indexOf('science') !== -1 || text.indexOf('research') !== -1 || text.indexOf('study') !== -1) {
+                return 'science';
+            }
+            if (text.indexOf('world') !== -1 || text.indexOf('international') !== -1 || text.indexOf('global') !== -1) {
+                return 'world';
+            }
+            
+            return 'general';
         }
 
         function loadDemoData() {
