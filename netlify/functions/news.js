@@ -1,180 +1,123 @@
 const cache = new Map();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
-exports.handler = async (event, context) => {
-  // CORS headers
+exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Content-Type': 'application/json',
   };
 
-  // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: '',
-    };
+    return { statusCode: 200, headers, body: '' };
   }
-
-  // Only allow GET requests
   if (event.httpMethod !== 'GET') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   try {
-    // Extract query parameters
-    const queryParams = event.queryStringParameters || {};
-    
-    // Set default parameters
-    const {
-      q = 'latest news', // Default search query
-      lang = 'en',
-      country = 'us',
-      max = '10',
-      category = '',
-      expand = 'content', // Get full article content
-      from = '', // Date from (YYYY-MM-DD)
-      to = '' // Date to (YYYY-MM-DD)
-    } = queryParams;
+    const API_KEY = process.env.GNEWS_API_KEY;
+    if (!API_KEY) {
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Missing GNEWS_API_KEY' }) };
+    }
 
-    // Create cache key
-    const cacheKey = JSON.stringify({ q, lang, country, max, category, expand, from, to });
-    
-    // Check cache first
-    const cachedResult = cache.get(cacheKey);
-    if (cachedResult && Date.now() - cachedResult.timestamp < CACHE_DURATION) {
-      console.log('Returning cached result');
+    const qp = event.queryStringParameters || {};
+
+    // Detect if the user actually provided q (Search requires q) :contentReference[oaicite:1]{index=1}
+    const hasUserQuery = Object.prototype.hasOwnProperty.call(qp, 'q') && qp.q && qp.q.trim() !== '';
+    const hasCategory = qp.category && qp.category.trim() !== '';
+
+    // Prefer top-headlines when there's no explicit q, otherwise use search
+    const endpoint = hasCategory || !hasUserQuery ? 'top-headlines' : 'search';
+
+    // Build query
+    const params = new URLSearchParams();
+    params.set('apikey', API_KEY);
+    params.set('lang', qp.lang || 'en');
+    params.set('max', qp.max || '20');
+
+    // country is allowed on both endpoints
+    if (qp.country) params.set('country', qp.country);
+
+    if (endpoint === 'top-headlines') {
+      params.set('category', qp.category || 'general');
+      if (qp.q) params.set('q', qp.q); // optional keyword filter on headlines :contentReference[oaicite:2]{index=2}
+    } else {
+      params.set('q', qp.q.trim());
+    }
+
+    // Normalize from/to to ISO 8601 (required) :contentReference[oaicite:3]{index=3}
+    for (const key of ['from', 'to']) {
+      const v = qp[key];
+      if (!v) continue;
+      const d = new Date(v);
+      params.set(key, isNaN(d.getTime()) ? `${v}T00:00:00.000Z` : d.toISOString());
+    }
+
+    // Only send expand=content if explicitly enabled by env (paid feature) :contentReference[oaicite:4]{index=4}
+    const allowExpand = (process.env.GNEWS_EXPAND_CONTENT || '').toLowerCase() === 'true';
+    if (allowExpand && qp.expand === 'content') params.set('expand', 'content');
+
+    const baseUrl = (q) => `https://gnews.io/api/v4/${endpoint}?${q.toString()}`;
+
+    // Simple in-memory cache
+    const cacheKey = `${endpoint}|${params.toString()}`;
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.t < CACHE_DURATION) {
+      return { statusCode: 200, headers: { ...headers, 'X-Cache': 'HIT' }, body: JSON.stringify(cached.data) };
+    }
+
+    // Fetch with graceful fallback if expand triggers a plan error
+    let url = baseUrl(params);
+    let res = await fetch(url);
+    let data = await res.json();
+
+    if (!res.ok && params.has('expand')) {
+      params.delete('expand');
+      url = baseUrl(params);
+      res = await fetch(url);
+      data = await res.json();
+    }
+
+    if (!res.ok) {
       return {
-        statusCode: 200,
-        headers: {
-          ...headers,
-          'X-Cache': 'HIT',
-        },
-        body: JSON.stringify(cachedResult.data),
-      };
-    }
-
-    // Determine endpoint based on category
-    let endpoint = 'search';
-    if (category) {
-      endpoint = 'top-headlines';
-    }
-
-    // Build API URL
-    const apiUrl = new URL(`https://gnews.io/api/v4/${endpoint}`);
-    
-    // Add parameters to URL
-    apiUrl.searchParams.append('apikey', process.env.GNEWS_API_KEY);
-    apiUrl.searchParams.append('lang', lang);
-    apiUrl.searchParams.append('max', max);
-    apiUrl.searchParams.append('expand', expand);
-
-    if (endpoint === 'search') {
-      apiUrl.searchParams.append('q', q);
-      if (country) apiUrl.searchParams.append('country', country);
-      if (from) apiUrl.searchParams.append('from', from);
-      if (to) apiUrl.searchParams.append('to', to);
-    } else if (endpoint === 'top-headlines') {
-      apiUrl.searchParams.append('category', category);
-      if (country) apiUrl.searchParams.append('country', country);
-    }
-
-    console.log('Fetching from:', apiUrl.toString().replace(process.env.GNEWS_API_KEY, 'HIDDEN'));
-
-    // Make API request
-    const response = await fetch(apiUrl.toString());
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('GNews API Error:', response.status, errorText);
-      
-      return {
-        statusCode: response.status,
+        statusCode: res.status,
         headers,
-        body: JSON.stringify({ 
-          error: 'Failed to fetch news',
-          status: response.status,
-          message: errorText
+        body: JSON.stringify({
+          error: data?.errors?.[0] || data?.message || 'GNews API error',
+          status: res.status,
         }),
       };
     }
 
-    const data = await response.json();
-    
-    // Validate response structure
     if (!data.articles || !Array.isArray(data.articles)) {
-      console.error('Invalid response structure:', data);
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ 
-          error: 'Invalid response from news API',
-          received: data
-        }),
-      };
+      return { statusCode: 502, headers, body: JSON.stringify({ error: 'Invalid response from news API' }) };
     }
 
-    // Process articles - clean up and standardize data
-    const processedArticles = data.articles.map(article => ({
-      title: article.title || 'No title',
-      description: article.description || 'No description',
-      content: article.content || article.description || 'No content available',
-      url: article.url,
-      image: article.image,
-      publishedAt: article.publishedAt,
-      source: {
-        name: article.source?.name || 'Unknown Source',
-        url: article.source?.url || ''
-      }
+    const articles = data.articles.map((a) => ({
+      title: a.title || 'No title',
+      description: a.description || 'No description',
+      content: a.content || a.description || 'No content available',
+      url: a.url,
+      image: a.image,
+      publishedAt: a.publishedAt,
+      source: { name: a.source?.name || 'Unknown Source', url: a.source?.url || '' },
     }));
 
-    const processedData = {
-      totalArticles: data.totalArticles || processedArticles.length,
-      articles: processedArticles,
+    const payload = {
+      totalArticles: data.totalArticles || articles.length,
+      articles,
       fetchedAt: new Date().toISOString(),
-      endpoint: endpoint,
-      parameters: { q, lang, country, max, category, expand, from, to }
+      endpoint,
+      parameters: Object.fromEntries(params),
     };
 
-    // Cache the result
-    cache.set(cacheKey, {
-      data: processedData,
-      timestamp: Date.now()
-    });
+    cache.set(cacheKey, { t: Date.now(), data: payload });
+    if (cache.size > 100) cache.delete(cache.keys().next().value);
 
-    // Clean up old cache entries (keep cache size reasonable)
-    if (cache.size > 100) {
-      const oldestKey = cache.keys().next().value;
-      cache.delete(oldestKey);
-    }
-
-    return {
-      statusCode: 200,
-      headers: {
-        ...headers,
-        'X-Cache': 'MISS',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(processedData),
-    };
-
-  } catch (error) {
-    console.error('Function error:', error);
-    
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ 
-        error: 'Internal server error',
-        message: error.message,
-        timestamp: new Date().toISOString()
-      }),
-    };
+    return { statusCode: 200, headers: { ...headers, 'X-Cache': 'MISS' }, body: JSON.stringify(payload) };
+  } catch (err) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Internal server error', message: String(err) }) };
   }
 };
