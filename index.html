@@ -661,6 +661,15 @@
             align-items: center;
         }
 
+        .demo-notice {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border: 1px solid #ffeaa7;
+        }
+
         /* Responsive Styles */
         @media (max-width: 768px) {
             main .container {
@@ -866,151 +875,116 @@
     </footer>
 
     <script>
-        // Global variables
-        let selectedArticles = [];
-        let allArticles = [];
-        let currentCategory = '';
+        // Global state
+        var selectedArticles = [];
+        var allArticles = [];
+        var currentCategory = '';
 
-        // Source bias and reliability mappings
-        const SOURCE_BIAS_MAP = {
-            'CNN': 'center-left',
-            'Fox News': 'right',
-            'BBC': 'center',
-            'Reuters': 'center',
-            'Associated Press': 'center',
-            'The Guardian': 'center-left',
-            'Wall Street Journal': 'center-right',
-            'NPR': 'center-left',
-            'CBS News': 'center-left',
-            'ABC News': 'center-left',
-            'NBC News': 'center-left',
-            'The New York Times': 'center-left',
-            'Washington Post': 'center-left',
-            'USA Today': 'center',
-            'Bloomberg': 'center-right',
-            'CNBC': 'center-right'
-        };
-
-        const RELIABILITY_MAP = {
-            'Reuters': 95,
-            'Associated Press': 95,
-            'BBC': 90,
-            'NPR': 88,
-            'The Wall Street Journal': 87,
-            'The New York Times': 85,
-            'Washington Post': 85,
-            'CNN': 82,
-            'CBS News': 82,
-            'ABC News': 80,
-            'NBC News': 80,
-            'USA Today': 78,
-            'The Guardian': 80,
-            'Bloomberg': 85,
-            'Fox News': 70,
-            'CNBC': 75
-        };
-
-        // Initialize when page loads
+        // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             console.log('SpectrumNews initialized');
             setupEventListeners();
-            loadNews();
+            loadDemoData();
             startAutoRefresh();
         });
 
         function setupEventListeners() {
             // View options
-            document.querySelectorAll('.view-option').forEach(option => {
-                option.addEventListener('click', function() {
-                    document.querySelectorAll('.view-option').forEach(o => o.classList.remove('active'));
+            var viewOptions = document.querySelectorAll('.view-option');
+            for (var i = 0; i < viewOptions.length; i++) {
+                viewOptions[i].addEventListener('click', function() {
+                    var allOptions = document.querySelectorAll('.view-option');
+                    for (var j = 0; j < allOptions.length; j++) {
+                        allOptions[j].classList.remove('active');
+                    }
                     this.classList.add('active');
                 });
-            });
+            }
 
             // Topic filters
-            document.querySelectorAll('.topics-list li').forEach(topic => {
-                topic.addEventListener('click', function() {
-                    document.querySelectorAll('.topics-list li').forEach(t => t.classList.remove('active'));
+            var topics = document.querySelectorAll('.topics-list li');
+            for (var i = 0; i < topics.length; i++) {
+                topics[i].addEventListener('click', function() {
+                    var allTopics = document.querySelectorAll('.topics-list li');
+                    for (var j = 0; j < allTopics.length; j++) {
+                        allTopics[j].classList.remove('active');
+                    }
                     this.classList.add('active');
-                    currentCategory = this.dataset.topic;
+                    currentCategory = this.getAttribute('data-topic');
                     loadNews();
                 });
-            });
+            }
 
             // Bias filters
-            document.querySelectorAll('.bias-option').forEach(option => {
-                option.addEventListener('click', function() {
+            var biasOptions = document.querySelectorAll('.bias-option');
+            for (var i = 0; i < biasOptions.length; i++) {
+                biasOptions[i].addEventListener('click', function() {
                     this.classList.toggle('active');
                     filterArticles();
                 });
-            });
+            }
 
             // Compare button
-            const compareBtn = document.getElementById('compare-btn');
+            var compareBtn = document.getElementById('compare-btn');
             if (compareBtn) {
                 compareBtn.addEventListener('click', showComparisonModal);
             }
 
             // Modal close
-            const closeModal = document.querySelector('.close-modal');
+            var closeModal = document.querySelector('.close-modal');
             if (closeModal) {
                 closeModal.addEventListener('click', hideModal);
             }
 
-            const modal = document.getElementById('comparison-modal');
+            var modal = document.getElementById('comparison-modal');
             if (modal) {
                 modal.addEventListener('click', function(e) {
-                    if (e.target === this) hideModal();
+                    if (e.target === this) {
+                        hideModal();
+                    }
                 });
             }
 
-            // Search
-            const searchInput = document.getElementById('search-input');
+            // Search with debounce
+            var searchInput = document.getElementById('search-input');
             if (searchInput) {
-                searchInput.addEventListener('input', debounce(loadNews, 300));
+                var timeoutId;
+                searchInput.addEventListener('input', function() {
+                    clearTimeout(timeoutId);
+                    timeoutId = setTimeout(loadNews, 300);
+                });
             }
 
             // Reliability slider
-            const reliabilityRange = document.getElementById('reliability-range');
+            var reliabilityRange = document.getElementById('reliability-range');
             if (reliabilityRange) {
                 reliabilityRange.addEventListener('input', filterArticles);
             }
 
             // Time range
-            const timeRange = document.getElementById('time-range');
+            var timeRange = document.getElementById('time-range');
             if (timeRange) {
                 timeRange.addEventListener('change', loadNews);
             }
         }
 
         function startAutoRefresh() {
-            // Refresh every 30 minutes
-            setInterval(() => {
+            setInterval(function() {
                 console.log('Auto-refreshing news...');
                 loadNews();
             }, 30 * 60 * 1000);
         }
 
-        async function loadNews() {
-            const container = document.getElementById('news-container');
+        function loadNews() {
+            var container = document.getElementById('news-container');
             
-            // Show loading state
-            container.innerHTML = `
-                <div class="loading">
-                    <div class="loading-spinner"></div>
-                    <p>Loading latest news...</p>
-                </div>
-            `;
+            container.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Loading latest news...</p></div>';
 
             try {
-                // Get current search and filters
-                const searchInput = document.getElementById('search-input');
-                const searchQuery = searchInput ? searchInput.value.trim() || 'latest news' : 'latest news';
-                const timeRange = document.getElementById('time-range');
-                const timeValue = timeRange ? timeRange.value : '7d';
+                var searchInput = document.getElementById('search-input');
+                var searchQuery = searchInput ? searchInput.value.trim() || 'latest news' : 'latest news';
                 
-                // Build API parameters
-                const params = new URLSearchParams({
+                var params = new URLSearchParams({
                     q: searchQuery,
                     country: 'us',
                     lang: 'en',
@@ -1018,197 +992,288 @@
                     expand: 'content'
                 });
 
-                // Add category if selected
                 if (currentCategory) {
                     params.set('category', currentCategory);
                 }
 
-                // Add date filters based on time range
-                if (timeValue !== 'all') {
-                    const now = new Date();
-                    let fromDate;
-                    
-                    switch (timeValue) {
-                        case '24h':
-                            fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-                            break;
-                        case '7d':
-                            fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                            break;
-                        case '30d':
-                            fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                            break;
-                    }
-                    
-                    if (fromDate) {
-                        params.set('from', fromDate.toISOString().split('T')[0]);
-                    }
-                }
-
-                const data = await response.json();
+                console.log('Attempting to load news from API...');
                 
-                if (data.error) {
-                    throw new Error(data.error);
-                }
+                fetch('/.netlify/functions/news?' + params.toString())
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
 
-                // Process articles with bias and reliability data
-                allArticles = data.articles.map((article, index) => ({
-                    id: index + 1,
-                    title: article.title,
-                    description: article.description || 'No description available',
-                    content: article.content || article.description || 'No content available',
-                    url: article.url,
-                    image: article.image,
-                    source: article.source.name,
-                    published: article.publishedAt,
-                    topic: currentCategory || inferTopic(article.title, article.description),
-                    bias: inferBias(article.source.name),
-                    reliability: inferReliability(article.source.name)
-                }));
+                        if (!data.articles || !Array.isArray(data.articles)) {
+                            throw new Error('No articles found');
+                        }
 
-                renderArticles(allArticles);
-                console.log(`Loaded ${allArticles.length} articles from GNews API`);
+                        allArticles = data.articles.map(function(article, index) {
+                            return {
+                                id: index + 1,
+                                title: article.title || 'No title',
+                                description: article.description || 'No description available',
+                                content: article.content || article.description || 'No content available',
+                                url: article.url || '#',
+                                image: article.image || null,
+                                source: (article.source && article.source.name) || 'Unknown Source',
+                                published: article.publishedAt || new Date().toISOString(),
+                                topic: currentCategory || 'general',
+                                bias: inferBias((article.source && article.source.name) || 'Unknown Source'),
+                                reliability: inferReliability((article.source && article.source.name) || 'Unknown Source')
+                            };
+                        });
+
+                        renderArticles(allArticles);
+                        console.log('Loaded ' + allArticles.length + ' articles from API');
+                    })
+                    .catch(function(error) {
+                        console.error('API failed, loading demo data:', error);
+                        loadDemoData();
+                    });
 
             } catch (error) {
-                console.error('Error loading news:', error);
-                container.innerHTML = `
-                    <div class="loading">
-                        <p style="color: #e74c3c;">Failed to load news: ${error.message}</p>
-                        <p>Please try again or check your connection.</p>
-                    </div>
-                `;
+                console.error('Error in loadNews:', error);
+                loadDemoData();
             }
         }
 
-        function inferBias(sourceName) {
-            if (SOURCE_BIAS_MAP[sourceName]) {
-                return SOURCE_BIAS_MAP[sourceName];
-            }
+        function loadDemoData() {
+            allArticles = [
+                {
+                    id: 1,
+                    title: "Federal Reserve Announces New Interest Rate Policy",
+                    description: "The Federal Reserve announced a new approach to interest rates, citing economic recovery concerns and inflation targets.",
+                    content: "The Federal Reserve announced today a new monetary policy approach that will maintain current interest rates while monitoring inflation indicators.",
+                    url: "#",
+                    image: null,
+                    source: "Reuters",
+                    published: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+                    topic: "business",
+                    bias: "center",
+                    reliability: 95
+                },
+                {
+                    id: 2,
+                    title: "Tech Companies Report Strong Q4 Earnings",
+                    description: "Major technology companies exceeded earnings expectations in the fourth quarter, driven by cloud computing and AI investments.",
+                    content: "Technology sector leaders reported robust financial results for Q4, with particular strength in artificial intelligence and cloud services.",
+                    url: "#",
+                    image: null,
+                    source: "Wall Street Journal",
+                    published: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+                    topic: "technology",
+                    bias: "center-right",
+                    reliability: 87
+                },
+                {
+                    id: 3,
+                    title: "Global Climate Summit Reaches New Agreement",
+                    description: "World leaders at the climate summit agree on ambitious new targets for carbon emissions reduction and renewable energy adoption.",
+                    content: "The international climate conference concluded with breakthrough agreements on emission reductions and clean energy transitions.",
+                    url: "#",
+                    image: null,
+                    source: "BBC",
+                    published: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+                    topic: "science",
+                    bias: "center",
+                    reliability: 90
+                },
+                {
+                    id: 4,
+                    title: "Healthcare Innovation Shows Promise in Latest Trials",
+                    description: "New medical treatments demonstrate significant effectiveness in clinical trials, offering hope for patients with chronic conditions.",
+                    content: "Recent clinical trials show promising results for innovative healthcare treatments targeting previously difficult-to-treat conditions.",
+                    url: "#",
+                    image: null,
+                    source: "CNN",
+                    published: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+                    topic: "health",
+                    bias: "center-left",
+                    reliability: 82
+                },
+                {
+                    id: 5,
+                    title: "International Trade Talks Resume After Hiatus",
+                    description: "Trade representatives from major economies gather to discuss new agreements and resolve ongoing disputes.",
+                    content: "High-level trade negotiations have resumed with focus on reducing tariffs and improving economic cooperation between nations.",
+                    url: "#",
+                    image: null,
+                    source: "Fox News",
+                    published: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
+                    topic: "world",
+                    bias: "right",
+                    reliability: 70
+                },
+                {
+                    id: 6,
+                    title: "Space Exploration Mission Achieves Milestone",
+                    description: "Latest space mission successfully completes key objectives, advancing our understanding of the solar system.",
+                    content: "The space agency announced successful completion of mission objectives, gathering valuable data about planetary systems.",
+                    url: "#",
+                    image: null,
+                    source: "NPR",
+                    published: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+                    topic: "science",
+                    bias: "center-left",
+                    reliability: 88
+                }
+            ];
+
+            var container = document.getElementById('news-container');
+            container.innerHTML = '<div class="demo-notice">📰 <strong>Demo Mode:</strong> Showing sample articles. Your GNews API integration will load real-time news once properly configured.</div>';
             
-            for (const [source, bias] of Object.entries(SOURCE_BIAS_MAP)) {
-                if (sourceName.toLowerCase().includes(source.toLowerCase()) || 
-                    source.toLowerCase().includes(sourceName.toLowerCase())) {
-                    return bias;
+            renderArticles(allArticles);
+            console.log('Loaded demo articles');
+        }
+
+        function inferBias(sourceName) {
+            var biasMap = {
+                'CNN': 'center-left',
+                'Fox News': 'right',
+                'BBC': 'center',
+                'Reuters': 'center',
+                'Associated Press': 'center',
+                'The Guardian': 'center-left',
+                'Wall Street Journal': 'center-right',
+                'NPR': 'center-left',
+                'CBS News': 'center-left',
+                'ABC News': 'center-left',
+                'NBC News': 'center-left',
+                'The New York Times': 'center-left',
+                'Washington Post': 'center-left',
+                'USA Today': 'center',
+                'Bloomberg': 'center-right',
+                'CNBC': 'center-right'
+            };
+
+            if (biasMap[sourceName]) {
+                return biasMap[sourceName];
+            }
+
+            for (var source in biasMap) {
+                if (sourceName.toLowerCase().indexOf(source.toLowerCase()) !== -1 || 
+                    source.toLowerCase().indexOf(sourceName.toLowerCase()) !== -1) {
+                    return biasMap[source];
                 }
             }
-            
+
             return 'center';
         }
 
         function inferReliability(sourceName) {
-            if (RELIABILITY_MAP[sourceName]) {
-                return RELIABILITY_MAP[sourceName];
+            var reliabilityMap = {
+                'Reuters': 95,
+                'Associated Press': 95,
+                'BBC': 90,
+                'NPR': 88,
+                'The Wall Street Journal': 87,
+                'The New York Times': 85,
+                'Washington Post': 85,
+                'CNN': 82,
+                'CBS News': 82,
+                'ABC News': 80,
+                'NBC News': 80,
+                'USA Today': 78,
+                'The Guardian': 80,
+                'Bloomberg': 85,
+                'Fox News': 70,
+                'CNBC': 75
+            };
+
+            if (reliabilityMap[sourceName]) {
+                return reliabilityMap[sourceName];
             }
-            
-            for (const [source, reliability] of Object.entries(RELIABILITY_MAP)) {
-                if (sourceName.toLowerCase().includes(source.toLowerCase()) || 
-                    source.toLowerCase().includes(sourceName.toLowerCase())) {
-                    return reliability;
+
+            for (var source in reliabilityMap) {
+                if (sourceName.toLowerCase().indexOf(source.toLowerCase()) !== -1 || 
+                    source.toLowerCase().indexOf(sourceName.toLowerCase()) !== -1) {
+                    return reliabilityMap[source];
                 }
             }
-            
+
             return 75;
         }
 
-        function inferTopic(title, description) {
-            const text = (title + ' ' + description).toLowerCase();
-            
-            if (text.includes('election') || text.includes('politics') || text.includes('government')) {
-                return 'general';
-            }
-            if (text.includes('business') || text.includes('economy') || text.includes('stock')) {
-                return 'business';
-            }
-            if (text.includes('technology') || text.includes('tech') || text.includes('ai')) {
-                return 'technology';
-            }
-            if (text.includes('health') || text.includes('medical') || text.includes('disease')) {
-                return 'health';
-            }
-            if (text.includes('sports') || text.includes('football') || text.includes('basketball')) {
-                return 'sports';
-            }
-            if (text.includes('entertainment') || text.includes('movie') || text.includes('music')) {
-                return 'entertainment';
-            }
-            if (text.includes('science') || text.includes('research') || text.includes('study')) {
-                return 'science';
-            }
-            if (text.includes('world') || text.includes('international') || text.includes('global')) {
-                return 'world';
-            }
-            
-            return 'general';
-        }
-
         function renderArticles(articles) {
-            const container = document.getElementById('news-container');
+            var container = document.getElementById('news-container');
+            var existingNotice = container.querySelector('.demo-notice');
             
             if (!articles || articles.length === 0) {
                 container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No articles found. Try different search terms or filters.</p>';
                 return;
             }
 
-            container.innerHTML = '';
-            articles.forEach(article => {
-                const articleElement = createArticleCard(article);
-                container.appendChild(articleElement);
-            });
+            var articlesHTML = '';
+            if (existingNotice) {
+                articlesHTML = existingNotice.outerHTML;
+            }
+
+            for (var i = 0; i < articles.length; i++) {
+                articlesHTML += createArticleCardHTML(articles[i]);
+            }
+
+            container.innerHTML = articlesHTML;
+
+            // Add event listeners for checkboxes
+            var checkboxes = container.querySelectorAll('.selection-checkbox');
+            for (var i = 0; i < checkboxes.length; i++) {
+                checkboxes[i].addEventListener('change', function() {
+                    var articleId = parseInt(this.getAttribute('data-article-id'));
+                    handleArticleSelection(articleId, this.checked);
+                });
+            }
         }
 
-        function createArticleCard(article) {
-            const card = document.createElement('div');
-            card.className = 'article-card';
-            card.dataset.articleId = article.id;
+        function createArticleCardHTML(article) {
+            var biasClass = article.bias + '-badge';
+            var sourceInitials = article.source.split(' ').map(function(word) {
+                return word[0];
+            }).join('').substring(0, 3);
 
-            const biasClass = `${article.bias}-badge`;
-            const sourceInitials = article.source.split(' ').map(word => word[0]).join('').substring(0, 3);
-
-            card.innerHTML = `
-                <input type="checkbox" class="selection-checkbox" data-article-id="${article.id}">
-                <div class="article-source">
-                    <div class="source-logo">${sourceInitials}</div>
-                    <div class="source-info">
-                        <div class="source-name">${article.source}</div>
-                        <div class="source-meta">
-                            <span class="reliability-badge">${article.reliability}% Reliable</span>
-                            <span class="bias-badge ${biasClass}">${formatBias(article.bias)}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="article-content">
-                    <h3 class="article-title">${article.title}</h3>
-                    <div class="article-meta">
-                        <span>${formatDate(article.published)}</span>
-                        <span>${article.topic.charAt(0).toUpperCase() + article.topic.slice(1)}</span>
-                    </div>
-                    <p class="article-description">${truncateText(article.description, 150)}</p>
-                    <div class="article-actions">
-                        <button onclick="viewFullArticle('${article.url}')">
-                            📖 Read Full Article
-                        </button>
-                        <button onclick="quickAnalyze(${article.id})">
-                            🔍 Quick Analysis
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            // Add checkbox listener
-            const checkbox = card.querySelector('.selection-checkbox');
-            checkbox.addEventListener('change', function() {
-                handleArticleSelection(article.id, this.checked);
-            });
-
-            return card;
+            return '<div class="article-card" data-article-id="' + article.id + '">' +
+                '<input type="checkbox" class="selection-checkbox" data-article-id="' + article.id + '">' +
+                '<div class="article-source">' +
+                    '<div class="source-logo">' + sourceInitials + '</div>' +
+                    '<div class="source-info">' +
+                        '<div class="source-name">' + article.source + '</div>' +
+                        '<div class="source-meta">' +
+                            '<span class="reliability-badge">' + article.reliability + '% Reliable</span>' +
+                            '<span class="bias-badge ' + biasClass + '">' + formatBias(article.bias) + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="article-content">' +
+                    '<h3 class="article-title">' + article.title + '</h3>' +
+                    '<div class="article-meta">' +
+                        '<span>' + formatDate(article.published) + '</span>' +
+                        '<span>' + (article.topic.charAt(0).toUpperCase() + article.topic.slice(1)) + '</span>' +
+                    '</div>' +
+                    '<p class="article-description">' + truncateText(article.description, 150) + '</p>' +
+                    '<div class="article-actions">' +
+                        '<button onclick="viewFullArticle(\'' + article.url + '\')">' +
+                            '📖 Read Full Article' +
+                        '</button>' +
+                        '<button onclick="quickAnalyze(' + article.id + ')">' +
+                            '🔍 Quick Analysis' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
         }
 
         function handleArticleSelection(articleId, isSelected) {
-            const card = document.querySelector(`[data-article-id="${articleId}"]`);
+            var card = document.querySelector('[data-article-id="' + articleId + '"]');
             
             if (isSelected) {
                 if (selectedArticles.length >= 2) {
-                    const checkbox = card.querySelector('.selection-checkbox');
+                    var checkbox = card.querySelector('.selection-checkbox');
                     checkbox.checked = false;
                     alert('You can only compare 2 articles at a time.');
                     return;
@@ -1216,7 +1281,9 @@
                 selectedArticles.push(articleId);
                 card.classList.add('selected');
             } else {
-                selectedArticles = selectedArticles.filter(id => id !== articleId);
+                selectedArticles = selectedArticles.filter(function(id) {
+                    return id !== articleId;
+                });
                 card.classList.remove('selected');
             }
             
@@ -1224,8 +1291,8 @@
         }
 
         function updateCompareButton() {
-            const compareBtn = document.getElementById('compare-btn');
-            const countSpan = document.getElementById('selected-count');
+            var compareBtn = document.getElementById('compare-btn');
+            var countSpan = document.getElementById('selected-count');
             
             if (countSpan) {
                 countSpan.textContent = selectedArticles.length;
@@ -1241,13 +1308,22 @@
         }
 
         function filterArticles() {
-            const activeBiases = Array.from(document.querySelectorAll('.bias-option.active')).map(el => el.dataset.bias);
-            const reliabilityRange = document.getElementById('reliability-range');
-            const minReliability = reliabilityRange ? reliabilityRange.value : 0;
+            var activeBiases = [];
+            var biasOptions = document.querySelectorAll('.bias-option.active');
+            for (var i = 0; i < biasOptions.length; i++) {
+                activeBiases.push(biasOptions[i].getAttribute('data-bias'));
+            }
 
-            let filteredArticles = allArticles.filter(article => {
-                if (activeBiases.length > 0 && !activeBiases.includes(article.bias)) return false;
-                if (article.reliability < minReliability) return false;
+            var reliabilityRange = document.getElementById('reliability-range');
+            var minReliability = reliabilityRange ? parseInt(reliabilityRange.value) : 0;
+
+            var filteredArticles = allArticles.filter(function(article) {
+                if (activeBiases.length > 0 && activeBiases.indexOf(article.bias) === -1) {
+                    return false;
+                }
+                if (article.reliability < minReliability) {
+                    return false;
+                }
                 return true;
             });
 
@@ -1257,114 +1333,110 @@
         function showComparisonModal() {
             if (selectedArticles.length < 2) return;
 
-            const modal = document.getElementById('comparison-modal');
+            var modal = document.getElementById('comparison-modal');
             if (modal) {
                 modal.style.display = 'block';
             }
 
-            const articles = selectedArticles.map(id => allArticles.find(article => article.id === id));
+            var articles = selectedArticles.map(function(id) {
+                return allArticles.find(function(article) {
+                    return article.id === id;
+                });
+            });
+
             renderComparisonHeader(articles);
             showAnalysisLoading();
             
-            // Show demo analysis after a short delay
-            setTimeout(() => {
+            setTimeout(function() {
                 renderDemoAnalysis(articles);
             }, 2000);
         }
 
         function renderComparisonHeader(articles) {
-            const header = document.getElementById('comparison-header');
+            var header = document.getElementById('comparison-header');
             if (!header) return;
             
             header.innerHTML = '';
 
-            articles.forEach((article, index) => {
-                const summaryDiv = document.createElement('div');
+            for (var i = 0; i < articles.length; i++) {
+                var article = articles[i];
+                var summaryDiv = document.createElement('div');
                 summaryDiv.className = 'article-summary';
-                summaryDiv.innerHTML = `
-                    <h3>${article.source} - ${formatBias(article.bias)}</h3>
-                    <h4>${article.title}</h4>
-                    <p><strong>Reliability:</strong> ${article.reliability}%</p>
-                    <p><strong>Published:</strong> ${formatDate(article.published)}</p>
-                    <p>${truncateText(article.description, 200)}</p>
-                `;
+                summaryDiv.innerHTML = 
+                    '<h3>' + article.source + ' - ' + formatBias(article.bias) + '</h3>' +
+                    '<h4>' + article.title + '</h4>' +
+                    '<p><strong>Reliability:</strong> ' + article.reliability + '%</p>' +
+                    '<p><strong>Published:</strong> ' + formatDate(article.published) + '</p>' +
+                    '<p>' + truncateText(article.description, 200) + '</p>';
                 header.appendChild(summaryDiv);
-            });
+            }
         }
 
         function showAnalysisLoading() {
-            const sections = ['similarities-content', 'differences-content', 'bias-content'];
-            sections.forEach(sectionId => {
-                const element = document.getElementById(sectionId);
+            var sections = ['similarities-content', 'differences-content', 'bias-content'];
+            for (var i = 0; i < sections.length; i++) {
+                var element = document.getElementById(sections[i]);
                 if (element) {
-                    element.innerHTML = `
-                        <div class="loading">
-                            <div class="loading-spinner"></div>
-                            <p>AI is analyzing articles...</p>
-                        </div>
-                    `;
+                    element.innerHTML = 
+                        '<div class="loading">' +
+                            '<div class="loading-spinner"></div>' +
+                            '<p>AI is analyzing articles...</p>' +
+                        '</div>';
                 }
-            });
+            }
         }
 
         function renderDemoAnalysis(articles) {
-            // Demo similarities
-            const similaritiesContainer = document.getElementById('similarities-content');
+            var similaritiesContainer = document.getElementById('similarities-content');
             if (similaritiesContainer) {
-                similaritiesContainer.innerHTML = `
-                    <div class="comparison-grid">
-                        <div class="comparison-point">
-                            <strong>✓</strong> Both articles report on the same core news event with consistent timeline
-                        </div>
-                        <div class="comparison-point">
-                            <strong>✓</strong> Similar factual information and key details are presented in both sources
-                        </div>
-                        <div class="comparison-point">
-                            <strong>✓</strong> Both sources cite official statements and credible sources
-                        </div>
-                        <div class="comparison-point">
-                            <strong>✓</strong> Core facts and figures are consistent across both articles
-                        </div>
-                    </div>
-                `;
+                similaritiesContainer.innerHTML = 
+                    '<div class="comparison-grid">' +
+                        '<div class="comparison-point">' +
+                            '<strong>✓</strong> Both articles report on the same core news event with consistent timeline' +
+                        '</div>' +
+                        '<div class="comparison-point">' +
+                            '<strong>✓</strong> Similar factual information and key details are presented in both sources' +
+                        '</div>' +
+                        '<div class="comparison-point">' +
+                            '<strong>✓</strong> Both sources cite official statements and credible sources' +
+                        '</div>' +
+                        '<div class="comparison-point">' +
+                            '<strong>✓</strong> Core facts and figures are consistent across both articles' +
+                        '</div>' +
+                    '</div>';
             }
 
-            // Demo differences
-            const differencesContainer = document.getElementById('differences-content');
+            var differencesContainer = document.getElementById('differences-content');
             if (differencesContainer) {
-                differencesContainer.innerHTML = `
-                    <div class="comparison-grid">
-                        <div class="comparison-point">
-                            <strong>⚠</strong> Different emphasis on various aspects of the story based on editorial focus
-                        </div>
-                        <div class="comparison-point">
-                            <strong>⚠</strong> Varying levels of detail and context provided in each article
-                        </div>
-                        <div class="comparison-point">
-                            <strong>⚠</strong> Different expert sources and quotes highlighted by each outlet
-                        </div>
-                        <div class="comparison-point">
-                            <strong>⚠</strong> Different framing and perspective on the implications of the news
-                        </div>
-                    </div>
-                `;
+                differencesContainer.innerHTML = 
+                    '<div class="comparison-grid">' +
+                        '<div class="comparison-point">' +
+                            '<strong>⚠</strong> Different emphasis on various aspects of the story based on editorial focus' +
+                        '</div>' +
+                        '<div class="comparison-point">' +
+                            '<strong>⚠</strong> Varying levels of detail and context provided in each article' +
+                        '</div>' +
+                        '<div class="comparison-point">' +
+                            '<strong>⚠</strong> Different expert sources and quotes highlighted by each outlet' +
+                        '</div>' +
+                        '<div class="comparison-point">' +
+                            '<strong>⚠</strong> Different framing and perspective on the implications of the news' +
+                        '</div>' +
+                    '</div>';
             }
 
-            // Demo bias analysis
-            const biasContainer = document.getElementById('bias-content');
+            var biasContainer = document.getElementById('bias-content');
             if (biasContainer) {
-                const source1Bias = formatBias(articles[0].bias);
-                const source2Bias = formatBias(articles[1].bias);
-                biasContainer.innerHTML = `
-                    <p>Analysis of these articles shows different editorial perspectives. <strong>${articles[0].source}</strong> (${source1Bias}) and <strong>${articles[1].source}</strong> (${source2Bias}) present the information from their respective editorial viewpoints.</p>
-                    <p>Both sources maintain factual accuracy while showing subtle differences in emphasis and framing. The ${source1Bias.toLowerCase()} perspective focuses more on certain aspects, while the ${source2Bias.toLowerCase()} viewpoint emphasizes different elements of the story.</p>
-                    <p><strong>Recommendation:</strong> Reading both perspectives provides a more complete understanding of the issue.</p>
-                `;
+                var source1Bias = formatBias(articles[0].bias);
+                var source2Bias = formatBias(articles[1].bias);
+                biasContainer.innerHTML = 
+                    '<p>Analysis of these articles shows different editorial perspectives. <strong>' + articles[0].source + '</strong> (' + source1Bias + ') and <strong>' + articles[1].source + '</strong> (' + source2Bias + ') present the information from their respective editorial viewpoints.</p>' +
+                    '<p>Both sources maintain factual accuracy while showing subtle differences in emphasis and framing. The ' + source1Bias.toLowerCase() + ' perspective focuses more on certain aspects, while the ' + source2Bias.toLowerCase() + ' viewpoint emphasizes different elements of the story.</p>' +
+                    '<p><strong>Recommendation:</strong> Reading both perspectives provides a more complete understanding of the issue.</p>';
             }
 
-            // Update confidence score
-            const confidenceFill = document.getElementById('confidence-fill');
-            const confidenceText = document.getElementById('confidence-text');
+            var confidenceFill = document.getElementById('confidence-fill');
+            var confidenceText = document.getElementById('confidence-text');
             if (confidenceFill) {
                 confidenceFill.style.width = '85%';
             }
@@ -1374,26 +1446,31 @@
         }
 
         function hideModal() {
-            const modal = document.getElementById('comparison-modal');
+            var modal = document.getElementById('comparison-modal');
             if (modal) {
                 modal.style.display = 'none';
             }
         }
 
         function viewFullArticle(url) {
-            window.open(url, '_blank');
-        }
-
-        function quickAnalyze(articleId) {
-            const article = allArticles.find(a => a.id === articleId);
-            if (article) {
-                alert(`Quick Analysis for "${article.title}":\n\nSource: ${article.source}\nBias: ${formatBias(article.bias)}\nReliability: ${article.reliability}%\nTopic: ${article.topic}`);
+            if (url && url !== '#') {
+                window.open(url, '_blank');
+            } else {
+                alert('This is a demo article. Real articles will have clickable links.');
             }
         }
 
-        // Utility functions
+        function quickAnalyze(articleId) {
+            var article = allArticles.find(function(a) {
+                return a.id === articleId;
+            });
+            if (article) {
+                alert('Quick Analysis for "' + article.title + '":\n\nSource: ' + article.source + '\nBias: ' + formatBias(article.bias) + '\nReliability: ' + article.reliability + '%\nTopic: ' + article.topic);
+            }
+        }
+
         function formatBias(bias) {
-            const biasMap = {
+            var biasMap = {
                 'left': 'Left',
                 'center-left': 'Center Left',
                 'center': 'Center',
@@ -1405,14 +1482,14 @@
 
         function formatDate(dateString) {
             if (!dateString) return 'Unknown date';
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffInHours = (now - date) / (1000 * 60 * 60);
+            var date = new Date(dateString);
+            var now = new Date();
+            var diffInHours = (now - date) / (1000 * 60 * 60);
 
             if (diffInHours < 1) {
                 return 'Just now';
             } else if (diffInHours < 24) {
-                return `${Math.floor(diffInHours)} hours ago`;
+                return Math.floor(diffInHours) + ' hours ago';
             } else if (diffInHours < 48) {
                 return 'Yesterday';
             } else {
@@ -1423,18 +1500,6 @@
         function truncateText(text, maxLength) {
             if (!text) return 'No content available';
             return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-        }
-
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
         }
     </script>
 </body>
