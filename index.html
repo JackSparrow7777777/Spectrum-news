@@ -219,6 +219,14 @@
     footer { background: var(--dark-gray); color: #fff; padding: 20px 0; margin-top: 28px; }
     footer .container { display: flex; justify-content: space-between; align-items: center; font-size: 13px; opacity: 0.9; }
 
+    /* ======= B) Bias badge color helpers ======= */
+    .bias-badge.left { background:#fde9e7; color:#E74C3C; }
+    .bias-badge.lean-left { background:#fef5e7; color:#F39C12; }
+    .bias-badge.center { background:#f2f3f4; color:#7F8C8D; }
+    .bias-badge.lean-right { background:#e7f3fb; color:#3498DB; }
+    .bias-badge.right { background:#e8ecf3; color:#2E4172; }
+    .bias-badge.unknown { background:#eee; color:#666; }
+
     /* Responsive */
     @media (max-width: 1024px) { .cards-3 #news-container { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 900px) {
@@ -296,26 +304,29 @@
           </select>
         </section>
 
+        <!-- ===== A) Bias buttons with Default + five buckets ===== -->
         <section class="filter-section">
-          <h2>Bias (UI)</h2>
+          <h2>Bias</h2>
           <div class="bias-filter" id="bias-filter">
+            <div class="bias-option active" data-bias="default">
+              <div class="bias-circle" style="background:#e0e0e0"></div><small>Default</small>
+            </div>
             <div class="bias-option" data-bias="left">
               <div class="bias-circle left-bias"></div><small>Left</small>
             </div>
-            <div class="bias-option" data-bias="center-left">
+            <div class="bias-option" data-bias="lean-left">
               <div class="bias-circle center-left-bias"></div><small>CL</small>
             </div>
-            <div class="bias-option active" data-bias="neutral">
+            <div class="bias-option" data-bias="center">
               <div class="bias-circle center-bias"></div><small>Center</small>
             </div>
-            <div class="bias-option" data-bias="center-right">
+            <div class="bias-option" data-bias="lean-right">
               <div class="bias-circle center-right-bias"></div><small>CR</small>
             </div>
             <div class="bias-option" data-bias="right">
               <div class="bias-circle right-bias"></div><small>Right</small>
             </div>
           </div>
-          <p style="margin-top:8px;color:#777;font-size:12px;">(Visual only for now; API call unchanged)</p>
         </section>
 
         <section class="filter-section">
@@ -420,12 +431,12 @@
           });
         });
 
-        // Bias UI only (no API side-effect yet)
+        // Bias UI (visual only in this snippet)
         document.querySelectorAll('#bias-filter .bias-option').forEach(opt => {
           opt.addEventListener('click', () => {
             document.querySelectorAll('#bias-filter .bias-option').forEach(x => x.classList.remove('active'));
             opt.classList.add('active');
-            // no API change; reserved for future client-side filtering
+            // hook your API call here later with ?bias=...
           });
         });
 
@@ -602,3 +613,4 @@
   </script>
 </body>
 </html>
+
