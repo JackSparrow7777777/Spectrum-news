@@ -8,7 +8,7 @@
   />
   <title>Spectrum News — Clean</title>
 
-  <!-- Optional: Roboto font (safe to remove if you prefer system fonts) -->
+  <!-- Optional: Roboto font -->
   <link
     href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
     rel="stylesheet"
@@ -19,11 +19,14 @@
     :root {
       --primary-color: #3478F6;
       --secondary-color: #FF5733;
-      --left-color: #E74C3C;
-      --center-left-color: #F39C12;
-      --center-color: #7F8C8D;
-      --center-right-color: #3498DB;
-      --right-color: #2E4172;
+
+      /* LEFT/RIGHT palette (US/KR) */
+      --left-color: #2E4172;         /* Left = blue (deep) */
+      --center-left-color: #87CEEB;  /* Center-Left = sky blue */
+      --center-color: #7F8C8D;       /* Center = neutral gray */
+      --center-right-color: #F39C12; /* Center-Right = orange */
+      --right-color: #E74C3C;        /* Right = red */
+
       --neutral-color: #27AE60;
       --light-gray: #f5f5f5;
       --medium-gray: #e0e0e0;
@@ -219,12 +222,12 @@
     footer { background: var(--dark-gray); color: #fff; padding: 20px 0; margin-top: 28px; }
     footer .container { display: flex; justify-content: space-between; align-items: center; font-size: 13px; opacity: 0.9; }
 
-    /* ======= Bias badge color helpers ======= */
-    .bias-badge.left { background:#fde9e7; color:#E74C3C; }
-    .bias-badge.lean-left { background:#fef5e7; color:#F39C12; }
+    /* ======= Bias badge color helpers (updated to match new palette) ======= */
+    .bias-badge.left { background:#e7f3fb; color:#2E4172; }     /* left = blue */
+    .bias-badge.lean-left { background:#eaf6ff; color:#2E86C1; }/* center-left = sky blue */
     .bias-badge.center { background:#f2f3f4; color:#7F8C8D; }
-    .bias-badge.lean-right { background:#e7f3fb; color:#3498DB; }
-    .bias-badge.right { background:#e8ecf3; color:#2E4172; }
+    .bias-badge.lean-right { background:#fef5e7; color:#F39C12; }/* center-right = orange */
+    .bias-badge.right { background:#fde9e7; color:#E74C3C; }    /* right = red */
     .bias-badge.unknown { background:#eee; color:#666; }
 
     /* Responsive */
@@ -304,7 +307,7 @@
           </select>
         </section>
 
-        <!-- Bias buttons with Default + five buckets -->
+        <!-- Bias buttons -->
         <section class="filter-section">
           <h2>Bias</h2>
           <div class="bias-filter" id="bias-filter">
@@ -397,7 +400,7 @@
       constructor() {
         this.apiEndpoint = '/.netlify/functions/news';
         this.currentCategory = '';
-        this.currentBias = 'default'; // <-- C) track selected bias
+        this.currentBias = 'default'; // track selected bias
         this.autoRefreshMs = 30 * 60 * 1000; // 30 minutes
         this.viewRoot = document.body; // toggles grid columns with classes
         this.bindUI();
@@ -432,7 +435,7 @@
           });
         });
 
-        // C) Bias buttons -> call backend with ?bias=
+        // Bias buttons -> call backend with ?bias=
         document.querySelectorAll('#bias-filter .bias-option').forEach(opt => {
           opt.addEventListener('click', () => {
             document.querySelectorAll('#bias-filter .bias-option').forEach(x => x.classList.remove('active'));
@@ -475,7 +478,6 @@
           const lang = document.getElementById('language-select').value;
           const max = document.getElementById('max-select').value;
 
-          // C) Send bias in the request when not "default"
           const params = new URLSearchParams({ q, country, lang, max, expand: 'content' });
           if (this.currentCategory) params.set('category', this.currentCategory);
           if (this.currentBias && this.currentBias !== 'default') params.set('bias', this.currentBias);
@@ -548,7 +550,7 @@
 
         const reliabilityText = 'Unrated';
 
-        // D) Build gray badge from article.bias
+        // Build gray badge from article.bias
         const detected = (article.bias || '').trim(); // '', 'left','lean-left','center','lean-right','right'
         const biasLabelMap = {
           'left': 'Left',
