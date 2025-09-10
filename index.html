@@ -1,555 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>News Aggregator</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <title>Spectrum News — Clean</title>
+
+  <!-- Optional: Roboto font (safe to remove if you prefer system fonts) -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* ====== CLEAN WHITE THEME (from your target design) ====== */
+    :root {
+      --primary-color: #3478F6;
+      --secondary-color: #FF5733;
+      --left-color: #E74C3C;
+      --center-left-color: #F39C12;
+      --center-color: #7F8C8D;
+      --center-right-color: #3498DB;
+      --right-color: #2E4172;
+      --neutral-color: #27AE60;
+      --light-gray: #f5f5f5;
+      --medium-gray: #e0e0e0;
+      --dark-gray: #333333;
+      --text-color: #333333;
+      --border-radius: 8px;
+      --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      color: var(--text-color);
+      background-color: #f9f9f9;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 15px; }
+
+    a { text-decoration: none; color: inherit; }
+    ul { list-style: none; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+
+    /* Header */
+    header {
+      background-color: #fff;
+      box-shadow: var(--box-shadow);
+      padding: 14px 0;
+      position: sticky; top: 0; z-index: 100;
+    }
+    header .container { display: flex; gap: 16px; justify-content: space-between; align-items: center; }
+
+    .logo h1 {
+      font-size: 22px; font-weight: 700; color: var(--primary-color);
+      letter-spacing: 0.2px;
+    }
+    .logo span { color: var(--dark-gray); font-weight: 500; }
+
+    .search-bar { flex: 1; }
+    .search-form { display: flex; gap: 10px; }
+    .search-bar input {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--medium-gray);
+      border-radius: 20px; font-size: 14px; background: #fff;
+    }
+    .search-btn {
+      background: var(--primary-color); color: #fff; padding: 10px 16px;
+      border-radius: 20px; font-weight: 500;
+    }
+
+    .auth .sign-in {
+      background-color: var(--primary-color);
+      color: white; padding: 8px 14px; border-radius: var(--border-radius); font-weight: 500;
+    }
+
+    /* Main */
+    main { padding: 18px 0; }
+    main .container { display: flex; gap: 20px; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px; background: #fff; border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow); padding: 18px; position: sticky; top: 78px; height: fit-content;
+    }
+
+    .filter-section { margin-bottom: 22px; }
+    .filter-section h2 {
+      font-size: 18px; margin-bottom: 12px; color: var(--dark-gray);
+    }
+    .filter-section h3 {
+      font-size: 14px; margin: 12px 0 8px; color: var(--dark-gray);
+    }
+
+    /* Basic selects */
+    .select {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--medium-gray);
+      border-radius: var(--border-radius); background: #fff; font-size: 14px;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f8f9fa;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        h1 {
-            text-align: center;
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .subtitle {
-            text-align: center;
-            opacity: 0.9;
-            font-size: 1.1rem;
-        }
-
-        .controls {
-            background: white;
-            padding: 2rem 0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .filter-section {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .filter-group label {
-            font-weight: 600;
-            color: #555;
-            font-size: 0.9rem;
-        }
-
-        select, input, button {
-            padding: 0.75rem;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
-        }
-
-        select, input {
-            min-width: 150px;
-        }
-
-        .search-section {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            align-items: end;
-            flex-wrap: wrap;
-        }
-
-        .search-input {
-            min-width: 300px;
-        }
-
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .category-tabs {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-top: 1rem;
-        }
-
-        .category-tab {
-            padding: 0.5rem 1rem;
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 0.9rem;
-        }
-
-        .category-tab:hover, .category-tab.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-color: transparent;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 3rem;
-            font-size: 1.2rem;
-            color: #667eea;
-        }
-
-        .loading::after {
-            content: '';
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #667eea;
-            border-radius: 50%;
-            border-top-color: transparent;
-            animation: spin 1s linear infinite;
-            margin-left: 10px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .error {
-            background: #fee;
-            color: #c33;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 2rem 0;
-            border-left: 4px solid #c33;
-        }
-
-        .articles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 2rem;
-            padding: 2rem 0;
-        }
-
-        .article-card {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-            transition: transform 0.3s, box-shadow 0.3s;
-            cursor: pointer;
-        }
-
-        .article-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-        }
-
-        .article-image {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-            background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
-                        linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
-                        linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
-                        linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
-            background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-        }
-
-        .article-content {
-            padding: 1.5rem;
-        }
-
-        .article-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            color: #2d3748;
-            line-height: 1.3;
-        }
-
-        .article-description {
-            color: #666;
-            margin-bottom: 1rem;
-            line-height: 1.5;
-        }
-
-        .article-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.875rem;
-            color: #888;
-            margin-bottom: 1rem;
-        }
-
-        .article-source {
-            font-weight: 600;
-            color: #667eea;
-        }
-
-        .article-date {
-            opacity: 0.8;
-        }
-
-        .read-more {
-            display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-
-        .read-more:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
-        }
-
-        .status-info {
-            background: white;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 2rem;
-            text-align: center;
-            font-size: 0.9rem;
-            color: #666;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .auto-refresh {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            justify-content: center;
-            margin-top: 1rem;
-            font-size: 0.9rem;
-            color: #666;
-        }
-
-        .refresh-indicator {
-            width: 12px;
-            height: 12px;
-            border: 2px solid #667eea;
-            border-radius: 50%;
-            border-top-color: transparent;
-            animation: spin 2s linear infinite;
-        }
-
-        @media (max-width: 768px) {
-            .filter-section, .search-section {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .search-input {
-                min-width: auto;
-            }
-            
-            .articles-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-            
-            h1 {
-                font-size: 2rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <div class="container">
-            <h1>News Aggregator</h1>
-            <p class="subtitle">Latest news from 60,000+ sources worldwide</p>
-        </div>
-    </header>
-
-    <div class="controls">
-        <div class="container">
-            <div class="filter-section">
-                <div class="filter-group">
-                    <label for="country">Country</label>
-                    <select id="country">
-                        <option value="us">United States</option>
-                        <option value="gb">United Kingdom</option>
-                        <option value="ca">Canada</option>
-                        <option value="au">Australia</option>
-                        <option value="de">Germany</option>
-                        <option value="fr">France</option>
-                        <option value="in">India</option>
-                        <option value="jp">Japan</option>
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label for="language">Language</label>
-                    <select id="language">
-                        <option value="en">English</option>
-                        <option value="es">Spanish</option>
-                        <option value="fr">French</option>
-                        <option value="de">German</option>
-                        <option value="it">Italian</option>
-                        <option value="pt">Portuguese</option>
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label for="max-articles">Articles</label>
-                    <select id="max-articles">
-                        <option value="10">10 articles</option>
-                        <option value="20">20 articles</option>
-                        <option value="25">25 articles</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="search-section">
-                <div class="filter-group">
-                    <label for="search-query">Search News</label>
-                    <input type="text" id="search-query" class="search-input" placeholder="Enter keywords..." value="latest news">
-                </div>
-                <button id="search-btn">Search News</button>
-            </div>
-
-            <div class="category-tabs">
-                <div class="category-tab active" data-category="">All News</div>
-                <div class="category-tab" data-category="general">General</div>
-                <div class="category-tab" data-category="world">World</div>
-                <div class="category-tab" data-category="business">Business</div>
-                <div class="category-tab" data-category="technology">Technology</div>
-                <div class="category-tab" data-category="entertainment">Entertainment</div>
-                <div class="category-tab" data-category="sports">Sports</div>
-                <div class="category-tab" data-category="science">Science</div>
-                <div class="category-tab" data-category="health">Health</div>
-            </div>
-
-            <div class="auto-refresh">
-                <div class="refresh-indicator"></div>
-                Auto-refreshing every 30 minutes
-            </div>
-        </div>
-    </div>
-
-    <main class="container">
-        <div id="status-info" class="status-info"></div>
-        <div id="loading" class="loading" style="display: none;">Loading latest news...</div>
-        <div id="error" class="error" style="display: none;"></div>
-        <div id="articles" class="articles-grid"></div>
-    </main>
-
-    <script>
-        class NewsApp {
-            constructor() {
-                this.apiEndpoint = '/.netlify/functions/news';
-                this.currentCategory = '';
-                this.autoRefreshInterval = null;
-                this.init();
-            }
-
-            init() {
-                this.bindEvents();
-                this.startAutoRefresh();
-                this.loadNews(); // Load initial news
-            }
-
-            bindEvents() {
-                // Search button
-                document.getElementById('search-btn').addEventListener('click', () => this.loadNews());
-                
-                // Enter key in search input
-                document.getElementById('search-query').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.loadNews();
-                });
-
-                // Category tabs
-                document.querySelectorAll('.category-tab').forEach(tab => {
-                    tab.addEventListener('click', (e) => {
-                        // Update active tab
-                        document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
-                        e.target.classList.add('active');
-                        
-                        // Update current category
-                        this.currentCategory = e.target.dataset.category;
-                        this.loadNews();
-                    });
-                });
-            }
-
-            startAutoRefresh() {
-                // Refresh every 30 minutes
-                this.autoRefreshInterval = setInterval(() => {
-                    console.log('Auto-refreshing news...');
-                    this.loadNews();
-                }, 30 * 60 * 1000);
-            }
-
-            async loadNews() {
-                const loadingEl = document.getElementById('loading');
-                const errorEl = document.getElementById('error');
-                const articlesEl = document.getElementById('articles');
-                const searchBtn = document.getElementById('search-btn');
-                const statusEl = document.getElementById('status-info');
-
-                // Show loading state
-                loadingEl.style.display = 'block';
-                errorEl.style.display = 'none';
-                searchBtn.disabled = true;
-
-                try {
-                    // Get form values
-                    const query = document.getElementById('search-query').value.trim() || 'latest news';
-                    const country = document.getElementById('country').value;
-                    const language = document.getElementById('language').value;
-                    const maxArticles = document.getElementById('max-articles').value;
-
-                    // Build API URL
-                    const params = new URLSearchParams({
-                        q: query,
-                        country: country,
-                        lang: language,
-                        max: maxArticles,
-                        expand: 'content'
-                    });
-
-                    if (this.currentCategory) {
-                        params.set('category', this.currentCategory);
-                    }
-
-                    const response = await fetch(`${this.apiEndpoint}?${params}`);
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-
-                    const data = await response.json();
-                    
-                    if (data.error) {
-                        throw new Error(data.error);
-                    }
-
-                    // Display articles
-                    this.displayArticles(data.articles);
-                    
-                    // Update status
-                    const cacheStatus = response.headers.get('X-Cache') === 'HIT' ? '(cached)' : '(fresh)';
-                    statusEl.innerHTML = `
-                        Loaded ${data.articles.length} articles ${cacheStatus} • 
-                        Last updated: ${new Date().toLocaleTimeString()}
-                    `;
-
-                } catch (error) {
-                    console.error('Error loading news:', error);
-                    errorEl.textContent = `Failed to load news: ${error.message}`;
-                    errorEl.style.display = 'block';
-                    articlesEl.innerHTML = '';
-                } finally {
-                    loadingEl.style.display = 'none';
-                    searchBtn.disabled = false;
-                }
-            }
-
-            displayArticles(articles) {
-                const articlesEl = document.getElementById('articles');
-                
-                if (!articles || articles.length === 0) {
-                    articlesEl.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1/-1;">No articles found. Try different search terms.</p>';
-                    return;
-                }
-
-                articlesEl.innerHTML = articles.map(article => `
-                    <article class="article-card" onclick="window.open('${article.url}', '_blank')">
-                        ${article.image ? `<img class="article-image" src="${article.image}" alt="${article.title}" onerror="this.style.display='none'">` : ''}
-                        <div class="article-content">
-                            <h2 class="article-title">${this.truncateText(article.title, 100)}</h2>
-                            <div class="article-meta">
-                                <span class="article-source">${article.source.name}</span>
-                                <span class="article-date">${this.formatDate(article.publishedAt)}</span>
-                            </div>
-                            <p class="article-description">${this.truncateText(article.description, 150)}</p>
-                            <a href="${article.url}" target="_blank" class="read-more" onclick="event.stopPropagation()">Read Full Article</a>
-                        </div>
-                    </article>
-                `).join('');
-            }
-
-            truncateText(text, maxLength) {
-                if (!text) return 'No content available';
-                return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-            }
-
-            formatDate(dateString) {
-                if (!dateString) return 'Unknown date';
-                const date = new Date(dateString);
-                const now = new Date();
-                const diffInHours = (now - date) / (1000 * 60 * 60);
-
-                if (diffInHours < 1) {
-                    return 'Just now';
-                } else if (diffInHours < 24) {
-                    return `${Math.floor(diffInHours)} hours ago`;
-                } else if (diffInHours < 48) {
-                    return 'Yesterday';
-                } else {
-                    return date.toLocaleDateString();
-                }
-            }
-        }
-
-        // Initialize the app when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            new NewsApp();
-        });
-    </script>
-</body>
-</html>
+    /* Bias chips */
+    .bias-filter { display: flex; justify-con
