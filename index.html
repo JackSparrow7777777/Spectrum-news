@@ -8,12 +8,14 @@
   />
   <title>Spectrum News — Clean</title>
 
+  <!-- Optional: Roboto font (safe to remove if you prefer system fonts) -->
   <link
     href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
     rel="stylesheet"
   />
 
   <style>
+    /* ====== CLEAN WHITE THEME (from your target design) ====== */
     :root {
       --primary-color: #3478F6;
       --secondary-color: #FF5733;
@@ -41,6 +43,7 @@
     }
 
     .container { max-width: 1200px; margin: 0 auto; padding: 0 15px; }
+
     a { text-decoration: none; color: inherit; }
     ul { list-style: none; }
     button { cursor: pointer; border: none; background: none; font-family: inherit; }
@@ -71,6 +74,11 @@
       border-radius: 20px; font-weight: 500;
     }
 
+    .auth .sign-in {
+      background-color: var(--primary-color);
+      color: white; padding: 8px 14px; border-radius: var(--border-radius); font-weight: 500;
+    }
+
     /* Main */
     main { padding: 18px 0; }
     main .container { display: flex; gap: 20px; }
@@ -82,15 +90,20 @@
     }
 
     .filter-section { margin-bottom: 22px; }
-    .filter-section h2 { font-size: 18px; margin-bottom: 12px; color: var(--dark-gray); }
-    .filter-section h3 { font-size: 14px; margin: 12px 0 8px; color: var(--dark-gray); }
+    .filter-section h2 {
+      font-size: 18px; margin-bottom: 12px; color: var(--dark-gray);
+    }
+    .filter-section h3 {
+      font-size: 14px; margin: 12px 0 8px; color: var(--dark-gray);
+    }
 
+    /* Basic selects */
     .select {
       width: 100%; padding: 10px 12px; border: 1px solid var(--medium-gray);
       border-radius: var(--border-radius); background: #fff; font-size: 14px;
     }
 
-    /* Bias chips (UI only) */
+    /* Bias chips */
     .bias-filter { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .bias-option { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
     .bias-circle { width: 22px; height: 22px; border-radius: 50%; margin-bottom: 6px; transition: transform 0.2s; }
@@ -100,7 +113,7 @@
     .center-bias{background: var(--center-color);} .center-right-bias{background: var(--center-right-color);}
     .right-bias{background: var(--right-color);}
 
-    /* Reliability slider (UI only) */
+    /* Reliability slider */
     .slider { width: 100%; height: 5px; background: linear-gradient(to right, #ff4d4d, #ffcc00, #66cc66); outline: none; -webkit-appearance: none; border-radius: 5px; }
     .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #fff; border: 2px solid var(--primary-color); border-radius: 50%; cursor: pointer; }
     .slider-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #666; }
@@ -131,19 +144,27 @@
       background: var(--primary-color);
       animation: pulse 1.8s ease-in-out infinite;
     }
-    @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.25); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.8; }
+    }
 
     /* View options */
     .view-options {
       display: flex; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow);
       overflow: hidden; margin-bottom: 16px;
     }
-    .view-option { padding: 10px 16px; font-weight: 500; transition: background-color 0.15s; flex: 0 0 auto; }
+    .view-option {
+      padding: 10px 16px; font-weight: 500; transition: background-color 0.15s; flex: 0 0 auto;
+    }
     .view-option:hover { background: var(--light-gray); }
     .view-option.active { background: var(--primary-color); color: #fff; }
 
     /* News grid */
-    #news-container { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    #news-container {
+      display: grid; grid-template-columns: 1fr; gap: 16px;
+    }
     .cards-2 #news-container { grid-template-columns: repeat(2, 1fr); }
     .cards-3 #news-container { grid-template-columns: repeat(3, 1fr); }
 
@@ -161,19 +182,31 @@
     }
     .source-info { flex: 1; min-width: 0; }
     .source-name { font-weight: 600; font-size: 14px; }
-    .source-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #777; font-size: 12px; margin-top: 2px; }
-    .reliability-badge { background: #e6f7e6; color: #27ae60; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-    .bias-badge { background: #f2f3f4; color: #444; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .source-meta {
+      display: flex; gap: 8px; flex-wrap: wrap; color: #777; font-size: 12px; margin-top: 2px;
+    }
+    .reliability-badge {
+      background: #e6f7e6; color: #27ae60; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    }
+    .bias-badge {
+      background: #f2f3f4; color: #444; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    }
 
-    .thumb { width: 100%; height: 180px; object-fit: cover; background: #f2f2f2; }
+    .thumb {
+      width: 100%; height: 180px; object-fit: cover; background: #f2f2f2;
+    }
 
     .article-content { padding: 14px; }
     .article-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
-    .article-meta { display: flex; justify-content: space-between; gap: 6px; color: #666; font-size: 13px; margin-bottom: 10px; }
+    .article-meta {
+      display: flex; justify-content: space-between; gap: 6px; color: #666; font-size: 13px; margin-bottom: 10px;
+    }
     .article-description { color: #444; font-size: 14px; margin-bottom: 12px; }
 
     .article-actions { display: flex; justify-content: space-between; align-items: center; }
-    .link-btn { color: var(--primary-color); font-weight: 600; padding: 8px 10px; border-radius: 6px; background: #f0f6ff; }
+    .link-btn {
+      color: var(--primary-color); font-weight: 600; padding: 8px 10px; border-radius: 6px; background: #f0f6ff;
+    }
 
     /* Loading & error */
     .loading { text-align: center; padding: 28px; color: #666; }
@@ -215,6 +248,10 @@
           <button class="search-btn" type="submit">Search</button>
         </form>
       </div>
+
+      <div class="auth">
+        <a class="sign-in" href="#" aria-disabled="true">Sign in</a>
+      </div>
     </div>
   </header>
 
@@ -225,6 +262,31 @@
       <aside class="sidebar">
         <section class="filter-section">
           <h2>Filters</h2>
+
+          <h3>Country</h3>
+          <select id="country-select" class="select">
+            <option value="us">United States</option>
+            <option value="gb">United Kingdom</option>
+            <option value="ca">Canada</option>
+            <option value="au">Australia</option>
+            <option value="de">Germany</option>
+            <option value="fr">France</option>
+            <option value="in">India</option>
+            <option value="jp">Japan</option>
+            <option value="kr">Korea</option>
+          </select>
+
+          <h3>Language</h3>
+          <select id="language-select" class="select">
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="pt">Portuguese</option>
+            <option value="ko">Korean</option>
+            <option value="ja">Japanese</option>
+          </select>
 
           <h3>Articles</h3>
           <select id="max-select" class="select">
@@ -276,17 +338,16 @@
 
         <section class="filter-section">
           <h2>Topics</h2>
-          <!-- IMPORTANT: Use valid GNews topics in data-topic -->
           <ul class="topics-list" id="topics">
-            <li class="active" data-topic="">All</li>
-            <li data-topic="breaking-news">Breaking</li>
-            <li data-topic="world">World</li>
-            <li data-topic="business">Business</li>
-            <li data-topic="technology">Technology</li>
-            <li data-topic="entertainment">Entertainment</li>
-            <li data-topic="sports">Sports</li>
-            <li data-topic="science">Science</li>
-            <li data-topic="health">Health</li>
+            <li class="active" data-category="">All</li>
+            <li data-category="general">General</li>
+            <li data-category="world">World</li>
+            <li data-category="business">Business</li>
+            <li data-category="technology">Technology</li>
+            <li data-category="entertainment">Entertainment</li>
+            <li data-category="sports">Sports</li>
+            <li data-category="science">Science</li>
+            <li data-category="health">Health</li>
           </ul>
         </section>
       </aside>
@@ -324,43 +385,47 @@
     class NewsApp {
       constructor() {
         this.apiEndpoint = '/.netlify/functions/news';
-        this.currentTopic = ''; // <-- use topic, not category
+        this.currentCategory = '';
         this.autoRefreshMs = 30 * 60 * 1000; // 30 minutes
-        this.viewRoot = document.body;
+        this.viewRoot = document.body; // toggles grid columns with classes
         this.bindUI();
         this.startAutoRefresh();
-        this.loadNews();
+        this.loadNews(); // initial
       }
 
       bindUI() {
         document.getElementById('year').textContent = new Date().getFullYear();
 
-        // Search
+        // Search (submit + enter)
         document.getElementById('search-form').addEventListener('submit', (e) => {
-          e.preventDefault(); this.loadNews();
+          e.preventDefault();
+          this.loadNews();
         });
 
-        // Articles count
+        // Basic selects
+        document.getElementById('country-select').addEventListener('change', () => this.loadNews());
+        document.getElementById('language-select').addEventListener('change', () => this.loadNews());
         document.getElementById('max-select').addEventListener('change', () => this.loadNews());
 
         // Time range (client-side filter)
         document.getElementById('time-range').addEventListener('change', () => this.loadNews());
 
-        // Topics (now data-topic)
+        // Topics (categories map directly to API "category" param)
         document.querySelectorAll('#topics li').forEach(li => {
           li.addEventListener('click', () => {
             document.querySelectorAll('#topics li').forEach(x => x.classList.remove('active'));
             li.classList.add('active');
-            this.currentTopic = li.dataset.topic || '';
+            this.currentCategory = li.dataset.category || '';
             this.loadNews();
           });
         });
 
-        // Bias UI only
+        // Bias UI only (no API side-effect yet)
         document.querySelectorAll('#bias-filter .bias-option').forEach(opt => {
           opt.addEventListener('click', () => {
             document.querySelectorAll('#bias-filter .bias-option').forEach(x => x.classList.remove('active'));
             opt.classList.add('active');
+            // no API change; reserved for future client-side filtering
           });
         });
 
@@ -376,7 +441,9 @@
         });
       }
 
-      startAutoRefresh() { setInterval(() => this.loadNews(), this.autoRefreshMs); }
+      startAutoRefresh() {
+        setInterval(() => this.loadNews(), this.autoRefreshMs);
+      }
 
       async loadNews() {
         const loadingEl = document.getElementById('loading');
@@ -391,10 +458,14 @@
 
         try {
           const q = (document.getElementById('search-input').value || 'latest news').trim();
+          const country = document.getElementById('country-select').value;
+          const lang = document.getElementById('language-select').value;
           const max = document.getElementById('max-select').value;
 
-          const params = new URLSearchParams({ q, max, expand: 'content' });
-          if (this.currentTopic) params.set('topic', this.currentTopic); // <-- FIX
+          const params = new URLSearchParams({
+            q, country, lang, max, expand: 'content'
+          });
+          if (this.currentCategory) params.set('category', this.currentCategory);
 
           const res = await fetch(`${this.apiEndpoint}?${params.toString()}`);
           if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -402,7 +473,7 @@
           const data = await res.json();
           if (data.error) throw new Error(data.error);
 
-          // client-side time filtering
+          // Optional time-range (client-side)
           const timeRange = document.getElementById('time-range').value;
           const filtered = this.filterByTimeRange(data.articles || [], timeRange);
 
@@ -426,6 +497,7 @@
         if (range === '24h') cutoff = now - 24 * 60 * 60 * 1000;
         if (range === '7d')  cutoff = now - 7  * 24 * 60 * 60 * 1000;
         if (range === '30d') cutoff = now - 30 * 24 * 60 * 60 * 1000;
+
         return articles.filter(a => {
           if (!a.publishedAt) return true;
           const t = new Date(a.publishedAt).getTime();
@@ -441,8 +513,9 @@
         }
 
         el.innerHTML = articles.map(a => this.cardHTML(a)).join('');
+        // Make entire card clickable, but allow "Read" button to stop propagation
         el.querySelectorAll('.article-card').forEach(card => {
-          card.addEventListener('click', () => {
+          card.addEventListener('click', (e) => {
             const url = card.getAttribute('data-url');
             if (url) window.open(url, '_blank', 'noopener,noreferrer');
           });
@@ -460,6 +533,7 @@
         const img = article?.image || '';
         const url = article?.url || '#';
 
+        // Placeholder: bias/reliability not computed here (UI only)
         const reliabilityText = 'Unrated';
         const biasText = 'Neutral';
 
@@ -493,7 +567,10 @@
         `;
       }
 
-      truncate(t, n) { if (!t) return ''; return t.length > n ? t.slice(0, n - 1) + '…' : t; }
+      truncate(t, n) {
+        if (!t) return '';
+        return t.length > n ? t.slice(0, n - 1) + '…' : t;
+      }
 
       humanTime(iso) {
         if (!iso) return 'Unknown';
@@ -508,7 +585,10 @@
         return d.toLocaleDateString();
       }
 
-      initial(name) { const c = (name || '').trim()[0]; return (c || '?').toUpperCase(); }
+      initial(name) {
+        const c = (name || '').trim()[0];
+        return (c || '?').toUpperCase();
+      }
 
       escape(str) {
         return String(str || '').replace(/[&<>"']/g, s => ({
@@ -517,6 +597,7 @@
       }
     }
 
+    // Init
     document.addEventListener('DOMContentLoaded', () => new NewsApp());
   </script>
 </body>
