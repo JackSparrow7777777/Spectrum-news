@@ -15,7 +15,7 @@
   />
 
   <style>
-    /* ====== CLEAN WHITE THEME (from your target design) ====== */
+    /* ====== CLEAN WHITE THEME ====== */
     :root {
       --primary-color: #3478F6;
       --secondary-color: #FF5733;
@@ -219,7 +219,7 @@
     footer { background: var(--dark-gray); color: #fff; padding: 20px 0; margin-top: 28px; }
     footer .container { display: flex; justify-content: space-between; align-items: center; font-size: 13px; opacity: 0.9; }
 
-    /* ======= B) Bias badge color helpers ======= */
+    /* ======= Bias badge color helpers ======= */
     .bias-badge.left { background:#fde9e7; color:#E74C3C; }
     .bias-badge.lean-left { background:#fef5e7; color:#F39C12; }
     .bias-badge.center { background:#f2f3f4; color:#7F8C8D; }
@@ -304,7 +304,7 @@
           </select>
         </section>
 
-        <!-- ===== A) Bias buttons with Default + five buckets ===== -->
+        <!-- Bias buttons with Default + five buckets -->
         <section class="filter-section">
           <h2>Bias</h2>
           <div class="bias-filter" id="bias-filter">
@@ -397,6 +397,7 @@
       constructor() {
         this.apiEndpoint = '/.netlify/functions/news';
         this.currentCategory = '';
+        this.currentBias = 'default'; // <-- C) track selected bias
         this.autoRefreshMs = 30 * 60 * 1000; // 30 minutes
         this.viewRoot = document.body; // toggles grid columns with classes
         this.bindUI();
@@ -431,12 +432,13 @@
           });
         });
 
-        // Bias UI (visual only in this snippet)
+        // C) Bias buttons -> call backend with ?bias=
         document.querySelectorAll('#bias-filter .bias-option').forEach(opt => {
           opt.addEventListener('click', () => {
             document.querySelectorAll('#bias-filter .bias-option').forEach(x => x.classList.remove('active'));
             opt.classList.add('active');
-            // hook your API call here later with ?bias=...
+            this.currentBias = opt.dataset.bias || 'default';
+            this.loadNews();
           });
         });
 
@@ -473,10 +475,10 @@
           const lang = document.getElementById('language-select').value;
           const max = document.getElementById('max-select').value;
 
-          const params = new URLSearchParams({
-            q, country, lang, max, expand: 'content'
-          });
+          // C) Send bias in the request when not "default"
+          const params = new URLSearchParams({ q, country, lang, max, expand: 'content' });
           if (this.currentCategory) params.set('category', this.currentCategory);
+          if (this.currentBias && this.currentBias !== 'default') params.set('bias', this.currentBias);
 
           const res = await fetch(`${this.apiEndpoint}?${params.toString()}`);
           if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -544,9 +546,19 @@
         const img = article?.image || '';
         const url = article?.url || '#';
 
-        // Placeholder: bias/reliability not computed here (UI only)
         const reliabilityText = 'Unrated';
-        const biasText = 'Neutral';
+
+        // D) Build gray badge from article.bias
+        const detected = (article.bias || '').trim(); // '', 'left','lean-left','center','lean-right','right'
+        const biasLabelMap = {
+          'left': 'Left',
+          'lean-left': 'Center Left',
+          'center': 'Center',
+          'lean-right': 'Center Right',
+          'right': 'Right'
+        };
+        const biasLabel = biasLabelMap[detected] || 'Unknown';
+        const biasClass = detected || 'unknown';
 
         return `
           <article class="article-card" data-url="${this.escape(url)}" tabindex="0" role="article" aria-label="${this.escape(title)}">
@@ -556,7 +568,7 @@
                 <div class="source-name">${this.escape(srcName)}</div>
                 <div class="source-meta">
                   <span class="reliability-badge">${this.escape(reliabilityText)}</span>
-                  <span class="bias-badge">${this.escape(biasText)}</span>
+                  <span class="bias-badge ${this.escape(biasClass)}">${this.escape(biasLabel)}</span>
                 </div>
               </div>
             </div>
@@ -613,4 +625,3 @@
   </script>
 </body>
 </html>
-
