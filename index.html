@@ -104,4 +104,501 @@
     }
 
     /* Bias chips */
-    .bias-filter { display: flex; justify-con
+    .bias-filter { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .bias-option { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+    .bias-circle { width: 22px; height: 22px; border-radius: 50%; margin-bottom: 6px; transition: transform 0.2s; }
+    .bias-option:hover .bias-circle { transform: scale(1.15); }
+    .bias-option.active .bias-circle { outline: 2px solid #000; outline-offset: 2px; }
+    .left-bias{background: var(--left-color);} .center-left-bias{background: var(--center-left-color);}
+    .center-bias{background: var(--center-color);} .center-right-bias{background: var(--center-right-color);}
+    .right-bias{background: var(--right-color);}
+
+    /* Reliability slider */
+    .slider { width: 100%; height: 5px; background: linear-gradient(to right, #ff4d4d, #ffcc00, #66cc66); outline: none; -webkit-appearance: none; border-radius: 5px; }
+    .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #fff; border: 2px solid var(--primary-color); border-radius: 50%; cursor: pointer; }
+    .slider-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #666; }
+
+    /* Topics */
+    .topics-list li {
+      padding: 8px 0; cursor: pointer; color: #555; transition: color 0.15s;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topics-list li:hover { color: var(--primary-color); }
+    .topics-list li.active { color: var(--primary-color); font-weight: 500; }
+
+    /* Content area */
+    .content { flex: 1; min-width: 0; }
+
+    /* Status bar */
+    .status-bar {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+      background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow);
+      padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #666;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--light-gray); border-radius: 999px; padding: 6px 10px; font-weight: 500;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--primary-color);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.25); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.8; }
+    }
+
+    /* View options */
+    .view-options {
+      display: flex; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow);
+      overflow: hidden; margin-bottom: 16px;
+    }
+    .view-option {
+      padding: 10px 16px; font-weight: 500; transition: background-color 0.15s; flex: 0 0 auto;
+    }
+    .view-option:hover { background: var(--light-gray); }
+    .view-option.active { background: var(--primary-color); color: #fff; }
+
+    /* News grid */
+    #news-container {
+      display: grid; grid-template-columns: 1fr; gap: 16px;
+    }
+    .cards-2 #news-container { grid-template-columns: repeat(2, 1fr); }
+    .cards-3 #news-container { grid-template-columns: repeat(3, 1fr); }
+
+    .article-card {
+      background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow);
+      overflow: hidden; transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .article-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
+
+    .article-source {
+      display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--medium-gray);
+    }
+    .source-logo {
+      width: 36px; height: 36px; background: var(--light-gray); border-radius: 6px; display: grid; place-items: center; font-weight: 700; color: #666;
+    }
+    .source-info { flex: 1; min-width: 0; }
+    .source-name { font-weight: 600; font-size: 14px; }
+    .source-meta {
+      display: flex; gap: 8px; flex-wrap: wrap; color: #777; font-size: 12px; margin-top: 2px;
+    }
+    .reliability-badge {
+      background: #e6f7e6; color: #27ae60; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    }
+    .bias-badge {
+      background: #f2f3f4; color: #444; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    }
+
+    .thumb {
+      width: 100%; height: 180px; object-fit: cover; background: #f2f2f2;
+    }
+
+    .article-content { padding: 14px; }
+    .article-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
+    .article-meta {
+      display: flex; justify-content: space-between; gap: 6px; color: #666; font-size: 13px; margin-bottom: 10px;
+    }
+    .article-description { color: #444; font-size: 14px; margin-bottom: 12px; }
+
+    .article-actions { display: flex; justify-content: space-between; align-items: center; }
+    .link-btn {
+      color: var(--primary-color); font-weight: 600; padding: 8px 10px; border-radius: 6px; background: #f0f6ff;
+    }
+
+    /* Loading & error */
+    .loading { text-align: center; padding: 28px; color: #666; }
+    .error {
+      background: #fee; color: #b40000; padding: 12px 14px; border-radius: var(--border-radius);
+      border-left: 4px solid #b40000; margin-bottom: 16px;
+    }
+
+    /* Footer */
+    footer { background: var(--dark-gray); color: #fff; padding: 20px 0; margin-top: 28px; }
+    footer .container { display: flex; justify-content: space-between; align-items: center; font-size: 13px; opacity: 0.9; }
+
+    /* Responsive */
+    @media (max-width: 1024px) { .cards-3 #news-container { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 900px) {
+      main .container { flex-direction: column; }
+      .sidebar { width: 100%; position: static; order: 2; }
+      .content { order: 1; }
+    }
+    @media (max-width: 600px) {
+      header .container { flex-direction: column; align-items: stretch; }
+      .search-form { width: 100%; }
+      .cards-2 #news-container, .cards-3 #news-container { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body class="cards-3">
+  <!-- ===== Header ===== -->
+  <header>
+    <div class="container">
+      <div class="logo">
+        <h1>Spectrum <span>News</span></h1>
+      </div>
+
+      <div class="search-bar">
+        <form id="search-form" class="search-form" autocomplete="off">
+          <input id="search-input" type="text" placeholder="Search news…" value="latest news" />
+          <button class="search-btn" type="submit">Search</button>
+        </form>
+      </div>
+
+      <div class="auth">
+        <a class="sign-in" href="#" aria-disabled="true">Sign in</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== Main ===== -->
+  <main>
+    <div class="container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <section class="filter-section">
+          <h2>Filters</h2>
+
+          <h3>Country</h3>
+          <select id="country-select" class="select">
+            <option value="us">United States</option>
+            <option value="gb">United Kingdom</option>
+            <option value="ca">Canada</option>
+            <option value="au">Australia</option>
+            <option value="de">Germany</option>
+            <option value="fr">France</option>
+            <option value="in">India</option>
+            <option value="jp">Japan</option>
+            <option value="kr">Korea</option>
+          </select>
+
+          <h3>Language</h3>
+          <select id="language-select" class="select">
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="pt">Portuguese</option>
+            <option value="ko">Korean</option>
+            <option value="ja">Japanese</option>
+          </select>
+
+          <h3>Articles</h3>
+          <select id="max-select" class="select">
+            <option value="10">10 articles</option>
+            <option value="20">20 articles</option>
+            <option value="25">25 articles</option>
+          </select>
+        </section>
+
+        <section class="filter-section">
+          <h2>Bias (UI)</h2>
+          <div class="bias-filter" id="bias-filter">
+            <div class="bias-option" data-bias="left">
+              <div class="bias-circle left-bias"></div><small>Left</small>
+            </div>
+            <div class="bias-option" data-bias="center-left">
+              <div class="bias-circle center-left-bias"></div><small>CL</small>
+            </div>
+            <div class="bias-option active" data-bias="neutral">
+              <div class="bias-circle center-bias"></div><small>Center</small>
+            </div>
+            <div class="bias-option" data-bias="center-right">
+              <div class="bias-circle center-right-bias"></div><small>CR</small>
+            </div>
+            <div class="bias-option" data-bias="right">
+              <div class="bias-circle right-bias"></div><small>Right</small>
+            </div>
+          </div>
+          <p style="margin-top:8px;color:#777;font-size:12px;">(Visual only for now; API call unchanged)</p>
+        </section>
+
+        <section class="filter-section">
+          <h2>Reliability (UI)</h2>
+          <input id="reliability" class="slider" type="range" min="0" max="100" value="0" />
+          <div class="slider-labels">
+            <span>Low</span><span>Medium</span><span>High</span>
+          </div>
+        </section>
+
+        <section class="filter-section">
+          <h2>Time Range</h2>
+          <select id="time-range" class="select">
+            <option value="any">Any time</option>
+            <option value="24h">Past 24 hours</option>
+            <option value="7d">Past 7 days</option>
+            <option value="30d">Past 30 days</option>
+          </select>
+        </section>
+
+        <section class="filter-section">
+          <h2>Topics</h2>
+          <ul class="topics-list" id="topics">
+            <li class="active" data-category="">All</li>
+            <li data-category="general">General</li>
+            <li data-category="world">World</li>
+            <li data-category="business">Business</li>
+            <li data-category="technology">Technology</li>
+            <li data-category="entertainment">Entertainment</li>
+            <li data-category="sports">Sports</li>
+            <li data-category="science">Science</li>
+            <li data-category="health">Health</li>
+          </ul>
+        </section>
+      </aside>
+
+      <!-- Content -->
+      <section class="content">
+        <div class="status-bar" id="status-bar">
+          <div class="pill"><span class="dot" aria-hidden="true"></span><span id="live-label">Live</span></div>
+          <div id="status-text">Loading…</div>
+          <div id="cache-text" style="opacity:0.8;"></div>
+        </div>
+
+        <div class="view-options" role="tablist" aria-label="View options">
+          <button class="view-option" data-view="1">List</button>
+          <button class="view-option active" data-view="2">2-up</button>
+          <button class="view-option" data-view="3">3-up</button>
+        </div>
+
+        <div id="error" class="error" style="display:none;"></div>
+        <div id="loading" class="loading" style="display:none;">Loading latest news…</div>
+
+        <div id="news-container" aria-live="polite"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div>© <span id="year"></span> Spectrum News</div>
+      <div>Powered by your Netlify Function + GNews</div>
+    </div>
+  </footer>
+
+  <script>
+    class NewsApp {
+      constructor() {
+        this.apiEndpoint = '/.netlify/functions/news';
+        this.currentCategory = '';
+        this.autoRefreshMs = 30 * 60 * 1000; // 30 minutes
+        this.viewRoot = document.body; // toggles grid columns with classes
+        this.bindUI();
+        this.startAutoRefresh();
+        this.loadNews(); // initial
+      }
+
+      bindUI() {
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Search (submit + enter)
+        document.getElementById('search-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          this.loadNews();
+        });
+
+        // Basic selects
+        document.getElementById('country-select').addEventListener('change', () => this.loadNews());
+        document.getElementById('language-select').addEventListener('change', () => this.loadNews());
+        document.getElementById('max-select').addEventListener('change', () => this.loadNews());
+
+        // Time range (client-side filter)
+        document.getElementById('time-range').addEventListener('change', () => this.loadNews());
+
+        // Topics (categories map directly to API "category" param)
+        document.querySelectorAll('#topics li').forEach(li => {
+          li.addEventListener('click', () => {
+            document.querySelectorAll('#topics li').forEach(x => x.classList.remove('active'));
+            li.classList.add('active');
+            this.currentCategory = li.dataset.category || '';
+            this.loadNews();
+          });
+        });
+
+        // Bias UI only (no API side-effect yet)
+        document.querySelectorAll('#bias-filter .bias-option').forEach(opt => {
+          opt.addEventListener('click', () => {
+            document.querySelectorAll('#bias-filter .bias-option').forEach(x => x.classList.remove('active'));
+            opt.classList.add('active');
+            // no API change; reserved for future client-side filtering
+          });
+        });
+
+        // View options
+        document.querySelectorAll('.view-option').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.view-option').forEach(x => x.classList.remove('active'));
+            btn.classList.add('active');
+            const mode = btn.dataset.view;
+            this.viewRoot.classList.remove('cards-1', 'cards-2', 'cards-3');
+            this.viewRoot.classList.add(`cards-${mode}`);
+          });
+        });
+      }
+
+      startAutoRefresh() {
+        setInterval(() => this.loadNews(), this.autoRefreshMs);
+      }
+
+      async loadNews() {
+        const loadingEl = document.getElementById('loading');
+        const errorEl = document.getElementById('error');
+        const container = document.getElementById('news-container');
+        const statusText = document.getElementById('status-text');
+        const cacheText = document.getElementById('cache-text');
+
+        loadingEl.style.display = 'block';
+        errorEl.style.display = 'none';
+        container.innerHTML = '';
+
+        try {
+          const q = (document.getElementById('search-input').value || 'latest news').trim();
+          const country = document.getElementById('country-select').value;
+          const lang = document.getElementById('language-select').value;
+          const max = document.getElementById('max-select').value;
+
+          const params = new URLSearchParams({
+            q, country, lang, max, expand: 'content'
+          });
+          if (this.currentCategory) params.set('category', this.currentCategory);
+
+          const res = await fetch(`${this.apiEndpoint}?${params.toString()}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+
+          // Optional time-range (client-side)
+          const timeRange = document.getElementById('time-range').value;
+          const filtered = this.filterByTimeRange(data.articles || [], timeRange);
+
+          this.renderArticles(filtered);
+
+          const cached = res.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
+          statusText.textContent = `Loaded ${filtered.length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
+          cacheText.textContent = `Response: ${cached}`;
+        } catch (err) {
+          errorEl.textContent = `Failed to load news: ${err.message}`;
+          errorEl.style.display = 'block';
+        } finally {
+          loadingEl.style.display = 'none';
+        }
+      }
+
+      filterByTimeRange(articles, range) {
+        if (range === 'any') return articles;
+        const now = Date.now();
+        let cutoff = 0;
+        if (range === '24h') cutoff = now - 24 * 60 * 60 * 1000;
+        if (range === '7d')  cutoff = now - 7  * 24 * 60 * 60 * 1000;
+        if (range === '30d') cutoff = now - 30 * 24 * 60 * 60 * 1000;
+
+        return articles.filter(a => {
+          if (!a.publishedAt) return true;
+          const t = new Date(a.publishedAt).getTime();
+          return isNaN(t) ? true : t >= cutoff;
+        });
+      }
+
+      renderArticles(articles) {
+        const el = document.getElementById('news-container');
+        if (!articles || !articles.length) {
+          el.innerHTML = `<div class="loading" style="padding:36px;">No articles found. Try a different search.</div>`;
+          return;
+        }
+
+        el.innerHTML = articles.map(a => this.cardHTML(a)).join('');
+        // Make entire card clickable, but allow "Read" button to stop propagation
+        el.querySelectorAll('.article-card').forEach(card => {
+          card.addEventListener('click', (e) => {
+            const url = card.getAttribute('data-url');
+            if (url) window.open(url, '_blank', 'noopener,noreferrer');
+          });
+        });
+        el.querySelectorAll('.link-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => e.stopPropagation());
+        });
+      }
+
+      cardHTML(article) {
+        const title = this.truncate(article?.title, 120) || 'Untitled';
+        const desc = this.truncate(article?.description, 180) || 'No description available.';
+        const srcName = article?.source?.name || 'Unknown';
+        const dateText = this.humanTime(article?.publishedAt);
+        const img = article?.image || '';
+        const url = article?.url || '#';
+
+        // Placeholder: bias/reliability not computed here (UI only)
+        const reliabilityText = 'Unrated';
+        const biasText = 'Neutral';
+
+        return `
+          <article class="article-card" data-url="${this.escape(url)}" tabindex="0" role="article" aria-label="${this.escape(title)}">
+            <div class="article-source">
+              <div class="source-logo" aria-hidden="true">${this.initial(srcName)}</div>
+              <div class="source-info">
+                <div class="source-name">${this.escape(srcName)}</div>
+                <div class="source-meta">
+                  <span class="reliability-badge">${this.escape(reliabilityText)}</span>
+                  <span class="bias-badge">${this.escape(biasText)}</span>
+                </div>
+              </div>
+            </div>
+
+            ${img ? `<img class="thumb" src="${this.escape(img)}" alt="" onerror="this.style.display='none'">` : ''}
+
+            <div class="article-content">
+              <h3 class="article-title">${this.escape(title)}</h3>
+              <div class="article-meta">
+                <span>${this.escape(dateText)}</span>
+                <span>${this.escape(new URL(url, location.href).hostname || '')}</span>
+              </div>
+              <p class="article-description">${this.escape(desc)}</p>
+              <div class="article-actions">
+                <a class="link-btn" href="${this.escape(url)}" target="_blank" rel="noopener noreferrer">Read full article →</a>
+              </div>
+            </div>
+          </article>
+        `;
+      }
+
+      truncate(t, n) {
+        if (!t) return '';
+        return t.length > n ? t.slice(0, n - 1) + '…' : t;
+      }
+
+      humanTime(iso) {
+        if (!iso) return 'Unknown';
+        const d = new Date(iso);
+        if (isNaN(d)) return 'Unknown';
+        const diffMs = Date.now() - d.getTime();
+        const h = Math.floor(diffMs / (1000 * 60 * 60));
+        if (h < 1) return 'Just now';
+        if (h < 24) return `${h}h ago`;
+        const days = Math.floor(h / 24);
+        if (days === 1) return 'Yesterday';
+        return d.toLocaleDateString();
+      }
+
+      initial(name) {
+        const c = (name || '').trim()[0];
+        return (c || '?').toUpperCase();
+      }
+
+      escape(str) {
+        return String(str || '').replace(/[&<>"']/g, s => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[s]));
+      }
+    }
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => new NewsApp());
+  </script>
+</body>
+</html>
