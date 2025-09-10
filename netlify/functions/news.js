@@ -4,183 +4,201 @@
 const cache = new Map();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
-// CHANGED: allow-list of valid categories for /top-headlines
+// ---- AllSides-style buckets (seed list — expand as you like) ----
+const BIAS_BUCKETS = {
+  'left': [
+    'alternet.org','democracynow.org','theguardian.com','huffpost.com','theintercept.com',
+    'jacobin.com','motherjones.com','msnbc.com','thenation.com','newyorker.com',
+    'thedailybeast.com','slate.com','vox.com','salon.com'
+  ],
+  'lean-left': [
+    'abcnews.go.com','axios.com','bloomberg.com','cbsnews.com','cnbc.com','cnn.com',
+    'insider.com','businessinsider.com','nbcnews.com','nytimes.com','npr.org',
+    'politico.com','propublica.org','semafor.com','time.com','usatoday.com',
+    'washingtonpost.com','news.yahoo.com'
+  ],
+  'center': [
+    'apnews.com','reuters.com','bbc.com','bbc.co.uk','csmonitor.com','forbes.com',
+    'marketwatch.com','newsweek.com','newsnationnow.com','thehill.com'
+  ],
+  'lean-right': [
+    'thedispatch.com','theepochtimes.com','foxbusiness.com','justthenews.com',
+    'nationalreview.com','nypost.com','realclearpolitics.com','washingtonexaminer.com',
+    'washingtontimes.com','zerohedge.com','wsj.com'
+  ],
+  'right': [
+    'theamericanconservative.com','spectator.org','theblaze.com','breitbart.com','cbn.com',
+    'dailycaller.com','dailymail.co.uk','dailywire.com','foxnews.com','thefederalist.com',
+    'ijr.com','newsmax.com','oann.com','thepostmillennial.com','freebeacon.com'
+  ]
+};
+
+// Extract hostname and a simple registrable domain (handles co.uk/com.au etc.)
+function parseHostParts(u) {
+  try {
+    const hostname = new URL(u).hostname.replace(/^www\./i, '');
+    const parts = hostname.split('.');
+    const two = parts.slice(-2).join('.');
+    const three = parts.slice(-3).join('.');
+    const twoLevelTLDs = new Set([
+      'co.uk','com.au','com.br','co.jp','co.kr','co.in','com.sg','com.hk'
+    ]);
+    const registrable = twoLevelTLDs.has(two) ? three : two;
+    return { hostname, registrable };
+  } catch {
+    return { hostname: '', registrable: '' };
+  }
+}
+
+// Fast lookup map {domain -> bias}
+const DOMAIN_TO_BIAS = (() => {
+  const m = new Map();
+  for (const [bias, list] of Object.entries(BIAS_BUCKETS)) {
+    for (const d of list) m.set(d, bias);
+  }
+  return m;
+})();
+
+function detectBiasByUrl(url) {
+  const { hostname, registrable } = parseHostParts(url || '');
+  if (!hostname) return '';
+  // exact host first (covers abcnews.go.com), then registrable (cnn.com)
+  if (DOMAIN_TO_BIAS.has(hostname)) return DOMAIN_TO_BIAS.get(hostname);
+  if (DOMAIN_TO_BIAS.has(registrable)) return DOMAIN_TO_BIAS.get(registrable);
+  return '';
+}
+
+// Valid GNews categories for /top-headlines
 const ALLOWED_CATEGORIES = new Set([
   'general','world','nation','business','technology','entertainment','sports','science','health'
 ]);
 
 exports.handler = async (event, context) => {
-  // CORS headers
+  // CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
   };
 
-  // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
-
-  // Only allow GET requests
   if (event.httpMethod !== 'GET') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   try {
-    // Extract query parameters
-    const queryParams = event.queryStringParameters || {};
-    
-    // Set default parameters
-    const {
-      q: qRaw = 'latest news', // Default search query
-      lang = 'en',
-      country = 'us',
-      max = '10',
-      category: categoryRaw = '',
-      topic: topicRaw = '',             // CHANGED: also accept "topic"
-      expand = 'content',               // Get full article content
-      from = '',                        // Date from (YYYY-MM-DD)
-      to = ''                           // Date to (YYYY-MM-DD)
-    } = queryParams;
+    const qp = event.queryStringParameters || {};
 
-    // CHANGED: normalize q and category/topic
-    const q = String(qRaw || '').trim() || 'latest news';
-    let category = String(categoryRaw || topicRaw || '').toLowerCase().trim();
-    if (!ALLOWED_CATEGORIES.has(category)) category = ''; // ignore unknowns
+    // ---- existing params (kept) ----
+    const q         = String(qp.q || 'latest news').trim() || 'latest news';
+    const lang      = String(qp.lang || 'en');
+    const country   = String(qp.country || 'us');
+    const maxReq    = Math.max(1, Math.min(parseInt(qp.max || '10', 10) || 10, 100));
+    let   category  = String(qp.category || qp.topic || '').toLowerCase().trim();
+    const expand    = qp.expand === 'content' ? 'content' : 'summary';
+    const from      = String(qp.from || '');
+    const to        = String(qp.to || '');
 
-    // Create cache key (CHANGED: use normalized category)
-    const cacheKey = JSON.stringify({ q, lang, country, max, category, expand, from, to });
-    
-    // Check cache first
-    const cachedResult = cache.get(cacheKey);
-    if (cachedResult && Date.now() - cachedResult.timestamp < CACHE_DURATION) {
-      return {
-        statusCode: 200,
-        headers: { ...headers, 'X-Cache': 'HIT' },
-        body: JSON.stringify(cachedResult.data),
-      };
+    // ---- NEW: bias param (or legacy `spectrum`) ----
+    let bias = String(qp.bias || qp.spectrum || '').toLowerCase().trim();
+    if (!['left','lean-left','center','lean-right','right','default',''].includes(bias)) bias = '';
+    const doBiasFilter = !!bias && bias !== 'default';
+
+    if (!ALLOWED_CATEGORIES.has(category)) category = '';
+
+    // Cache key includes normalized params
+    const cacheKey = JSON.stringify({ q, lang, country, maxReq, category, expand, from, to, bias: doBiasFilter ? bias : '' });
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return { statusCode: 200, headers: { ...headers, 'X-Cache': 'HIT' }, body: JSON.stringify(cached.data) };
     }
 
-    // Determine endpoint based on category
-    let endpoint = 'search';
-    if (category) endpoint = 'top-headlines';
-
-    // Build API URL
+    // Choose endpoint: category => top-headlines (supports q + category), else search
+    const endpoint = category ? 'top-headlines' : 'search';
     const apiUrl = new URL(`https://gnews.io/api/v4/${endpoint}`);
 
-    // Base params
     apiUrl.searchParams.append('apikey', process.env.GNEWS_API_KEY);
     apiUrl.searchParams.append('lang', lang);
-    apiUrl.searchParams.append('max', String(max));
     apiUrl.searchParams.append('expand', expand);
 
-    // CHANGED: always send q for BOTH endpoints so "search AND category" works
+    // Always include q so "search AND category" works
     apiUrl.searchParams.append('q', q);
 
+    // If we're going to filter by bias, request more so we can trim after filtering
+    const fetchMax = doBiasFilter ? Math.min(100, Math.max(maxReq, Math.ceil(maxReq * 2.5))) : maxReq;
+    apiUrl.searchParams.append('max', String(fetchMax));
+
     if (endpoint === 'search') {
-      // Optional params supported here
       if (country) apiUrl.searchParams.append('country', country);
-      if (from) apiUrl.searchParams.append('from', from);
-      if (to) apiUrl.searchParams.append('to', to);
-    } else { // top-headlines
+      if (from)    apiUrl.searchParams.append('from', from);
+      if (to)      apiUrl.searchParams.append('to', to);
+    } else {
       apiUrl.searchParams.append('category', category);
       if (country) apiUrl.searchParams.append('country', country);
-      // (from/to are typically for /search; keeping behavior consistent with your original code)
     }
 
-    // Hide API key in logs
-    const safeUrlForLog = apiUrl.toString().replace(process.env.GNEWS_API_KEY, 'HIDDEN');
-    console.log('Fetching from:', safeUrlForLog);
+    console.log('Fetching:', apiUrl.toString().replace(process.env.GNEWS_API_KEY, 'HIDDEN'));
 
-    // Make API request
-    const response = await fetch(apiUrl.toString());
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('GNews API Error:', response.status, errorText);
+    const resp = await fetch(apiUrl.toString());
+    if (!resp.ok) {
+      const txt = await resp.text();
+      return { statusCode: resp.status, headers, body: JSON.stringify({ error: 'Failed to fetch news', status: resp.status, message: txt }) };
+    }
+    const json = await resp.json();
+
+    if (!Array.isArray(json.articles)) {
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Invalid response from news API', received: json }) };
+    }
+
+    // Normalize + annotate bias for each article
+    let articles = json.articles.map(a => {
+      const primaryUrl = a.source?.url || a.url || '';
+      const biasDetected = detectBiasByUrl(primaryUrl);
       return {
-        statusCode: response.status,
-        headers,
-        body: JSON.stringify({ 
-          error: 'Failed to fetch news',
-          status: response.status,
-          message: errorText
-        }),
+        title: a.title || 'No title',
+        description: a.description || 'No description',
+        content: a.content || a.description || 'No content available',
+        url: a.url,
+        image: a.image,
+        publishedAt: a.publishedAt,
+        source: {
+          name: a.source?.name || 'Unknown Source',
+          url: a.source?.url || ''
+        },
+        bias: biasDetected || '' // '', 'left', 'lean-left', 'center', 'lean-right', 'right'
       };
+    });
+
+    // Apply bias filter (if any)
+    if (doBiasFilter) {
+      articles = articles.filter(a => a.bias === bias);
     }
 
-    const data = await response.json();
-    
-    // Validate response structure
-    if (!data.articles || !Array.isArray(data.articles)) {
-      console.error('Invalid response structure:', data);
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ 
-          error: 'Invalid response from news API',
-          received: data
-        }),
-      };
-    }
+    // Final trim
+    articles = articles.slice(0, maxReq);
 
-    // Process articles - clean up and standardize data
-    const processedArticles = data.articles.map(article => ({
-      title: article.title || 'No title',
-      description: article.description || 'No description',
-      content: article.content || article.description || 'No content available',
-      url: article.url,
-      image: article.image,
-      publishedAt: article.publishedAt,
-      source: {
-        name: article.source?.name || 'Unknown Source',
-        url: article.source?.url || ''
-      }
-    }));
-
-    const processedData = {
-      totalArticles: data.totalArticles || processedArticles.length,
-      articles: processedArticles,
+    const payload = {
+      totalArticles: json.totalArticles || articles.length,
+      articles,
       fetchedAt: new Date().toISOString(),
-      endpoint: endpoint,
-      // CHANGED: include normalized category and echo topic if provided
-      parameters: { q, lang, country, max, category, expand, from, to, topic: topicRaw }
+      endpoint,
+      parameters: { q, lang, country, max: maxReq, category, expand, from, to, bias: doBiasFilter ? bias : 'default' }
     };
 
-    // Cache the result
-    cache.set(cacheKey, { data: processedData, timestamp: Date.now() });
-
-    // Clean up old cache entries (keep cache size reasonable)
-    if (cache.size > 100) {
-      const oldestKey = cache.keys().next().value;
-      cache.delete(oldestKey);
-    }
+    cache.set(cacheKey, { data: payload, timestamp: Date.now() });
+    if (cache.size > 100) cache.delete(cache.keys().next().value);
 
     return {
       statusCode: 200,
-      headers: {
-        ...headers,
-        'X-Cache': 'MISS',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(processedData),
+      headers: { ...headers, 'X-Cache': 'MISS', 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     };
 
-  } catch (error) {
-    console.error('Function error:', error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ 
-        error: 'Internal server error',
-        message: error.message,
-        timestamp: new Date().toISOString()
-      }),
-    };
+  } catch (err) {
+    console.error('Function error:', err);
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Internal server error', message: err.message, timestamp: new Date().toISOString() }) };
   }
 };
+
