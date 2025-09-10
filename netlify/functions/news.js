@@ -1,5 +1,13 @@
+// netlify/functions/news.js
+// GNews API Serverless Function for Netlify
+
 const cache = new Map();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+// CHANGED: allow-list of valid categories for /top-headlines
+const ALLOWED_CATEGORIES = new Set([
+  'general','world','nation','business','technology','entertainment','sports','science','health'
+]);
 
 exports.handler = async (event, context) => {
   // CORS headers
@@ -11,11 +19,7 @@ exports.handler = async (event, context) => {
 
   // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: '',
-    };
+    return { statusCode: 200, headers, body: '' };
   }
 
   // Only allow GET requests
@@ -33,59 +37,65 @@ exports.handler = async (event, context) => {
     
     // Set default parameters
     const {
-      q = 'latest news', // Default search query
+      q: qRaw = 'latest news', // Default search query
       lang = 'en',
       country = 'us',
       max = '10',
-      category = '',
-      expand = 'content', // Get full article content
-      from = '', // Date from (YYYY-MM-DD)
-      to = '' // Date to (YYYY-MM-DD)
+      category: categoryRaw = '',
+      topic: topicRaw = '',             // CHANGED: also accept "topic"
+      expand = 'content',               // Get full article content
+      from = '',                        // Date from (YYYY-MM-DD)
+      to = ''                           // Date to (YYYY-MM-DD)
     } = queryParams;
 
-    // Create cache key
+    // CHANGED: normalize q and category/topic
+    const q = String(qRaw || '').trim() || 'latest news';
+    let category = String(categoryRaw || topicRaw || '').toLowerCase().trim();
+    if (!ALLOWED_CATEGORIES.has(category)) category = ''; // ignore unknowns
+
+    // Create cache key (CHANGED: use normalized category)
     const cacheKey = JSON.stringify({ q, lang, country, max, category, expand, from, to });
     
     // Check cache first
     const cachedResult = cache.get(cacheKey);
     if (cachedResult && Date.now() - cachedResult.timestamp < CACHE_DURATION) {
-      console.log('Returning cached result');
       return {
         statusCode: 200,
-        headers: {
-          ...headers,
-          'X-Cache': 'HIT',
-        },
+        headers: { ...headers, 'X-Cache': 'HIT' },
         body: JSON.stringify(cachedResult.data),
       };
     }
 
     // Determine endpoint based on category
     let endpoint = 'search';
-    if (category) {
-      endpoint = 'top-headlines';
-    }
+    if (category) endpoint = 'top-headlines';
 
     // Build API URL
     const apiUrl = new URL(`https://gnews.io/api/v4/${endpoint}`);
-    
-    // Add parameters to URL
+
+    // Base params
     apiUrl.searchParams.append('apikey', process.env.GNEWS_API_KEY);
     apiUrl.searchParams.append('lang', lang);
-    apiUrl.searchParams.append('max', max);
+    apiUrl.searchParams.append('max', String(max));
     apiUrl.searchParams.append('expand', expand);
 
+    // CHANGED: always send q for BOTH endpoints so "search AND category" works
+    apiUrl.searchParams.append('q', q);
+
     if (endpoint === 'search') {
-      apiUrl.searchParams.append('q', q);
+      // Optional params supported here
       if (country) apiUrl.searchParams.append('country', country);
       if (from) apiUrl.searchParams.append('from', from);
       if (to) apiUrl.searchParams.append('to', to);
-    } else if (endpoint === 'top-headlines') {
+    } else { // top-headlines
       apiUrl.searchParams.append('category', category);
       if (country) apiUrl.searchParams.append('country', country);
+      // (from/to are typically for /search; keeping behavior consistent with your original code)
     }
 
-    console.log('Fetching from:', apiUrl.toString().replace(process.env.GNEWS_API_KEY, 'HIDDEN'));
+    // Hide API key in logs
+    const safeUrlForLog = apiUrl.toString().replace(process.env.GNEWS_API_KEY, 'HIDDEN');
+    console.log('Fetching from:', safeUrlForLog);
 
     // Make API request
     const response = await fetch(apiUrl.toString());
@@ -93,7 +103,6 @@ exports.handler = async (event, context) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('GNews API Error:', response.status, errorText);
-      
       return {
         statusCode: response.status,
         headers,
@@ -139,14 +148,12 @@ exports.handler = async (event, context) => {
       articles: processedArticles,
       fetchedAt: new Date().toISOString(),
       endpoint: endpoint,
-      parameters: { q, lang, country, max, category, expand, from, to }
+      // CHANGED: include normalized category and echo topic if provided
+      parameters: { q, lang, country, max, category, expand, from, to, topic: topicRaw }
     };
 
     // Cache the result
-    cache.set(cacheKey, {
-      data: processedData,
-      timestamp: Date.now()
-    });
+    cache.set(cacheKey, { data: processedData, timestamp: Date.now() });
 
     // Clean up old cache entries (keep cache size reasonable)
     if (cache.size > 100) {
@@ -166,7 +173,6 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('Function error:', error);
-    
     return {
       statusCode: 500,
       headers,
