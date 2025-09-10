@@ -8,7 +8,6 @@
   />
   <title>Spectrum News — Clean</title>
 
-  <!-- Optional: Roboto font -->
   <link
     href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
     rel="stylesheet"
@@ -91,7 +90,7 @@
       border-radius: var(--border-radius); background: #fff; font-size: 14px;
     }
 
-    /* Bias chips */
+    /* Bias chips (UI only) */
     .bias-filter { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .bias-option { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
     .bias-circle { width: 22px; height: 22px; border-radius: 50%; margin-bottom: 6px; transition: transform 0.2s; }
@@ -101,7 +100,7 @@
     .center-bias{background: var(--center-color);} .center-right-bias{background: var(--center-right-color);}
     .right-bias{background: var(--right-color);}
 
-    /* Reliability slider */
+    /* Reliability slider (UI only) */
     .slider { width: 100%; height: 5px; background: linear-gradient(to right, #ff4d4d, #ffcc00, #66cc66); outline: none; -webkit-appearance: none; border-radius: 5px; }
     .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #fff; border: 2px solid var(--primary-color); border-radius: 50%; cursor: pointer; }
     .slider-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #666; }
@@ -277,16 +276,17 @@
 
         <section class="filter-section">
           <h2>Topics</h2>
+          <!-- IMPORTANT: Use valid GNews topics in data-topic -->
           <ul class="topics-list" id="topics">
-            <li class="active" data-category="">All</li>
-            <li data-category="general">General</li>
-            <li data-category="world">World</li>
-            <li data-category="business">Business</li>
-            <li data-category="technology">Technology</li>
-            <li data-category="entertainment">Entertainment</li>
-            <li data-category="sports">Sports</li>
-            <li data-category="science">Science</li>
-            <li data-category="health">Health</li>
+            <li class="active" data-topic="">All</li>
+            <li data-topic="breaking-news">Breaking</li>
+            <li data-topic="world">World</li>
+            <li data-topic="business">Business</li>
+            <li data-topic="technology">Technology</li>
+            <li data-topic="entertainment">Entertainment</li>
+            <li data-topic="sports">Sports</li>
+            <li data-topic="science">Science</li>
+            <li data-topic="health">Health</li>
           </ul>
         </section>
       </aside>
@@ -324,21 +324,20 @@
     class NewsApp {
       constructor() {
         this.apiEndpoint = '/.netlify/functions/news';
-        this.currentCategory = '';
+        this.currentTopic = ''; // <-- use topic, not category
         this.autoRefreshMs = 30 * 60 * 1000; // 30 minutes
-        this.viewRoot = document.body; // toggles grid columns with classes
+        this.viewRoot = document.body;
         this.bindUI();
         this.startAutoRefresh();
-        this.loadNews(); // initial
+        this.loadNews();
       }
 
       bindUI() {
         document.getElementById('year').textContent = new Date().getFullYear();
 
-        // Search (submit + enter)
+        // Search
         document.getElementById('search-form').addEventListener('submit', (e) => {
-          e.preventDefault();
-          this.loadNews();
+          e.preventDefault(); this.loadNews();
         });
 
         // Articles count
@@ -347,17 +346,17 @@
         // Time range (client-side filter)
         document.getElementById('time-range').addEventListener('change', () => this.loadNews());
 
-        // Topics (categories map directly to API "category" param)
+        // Topics (now data-topic)
         document.querySelectorAll('#topics li').forEach(li => {
           li.addEventListener('click', () => {
             document.querySelectorAll('#topics li').forEach(x => x.classList.remove('active'));
             li.classList.add('active');
-            this.currentCategory = li.dataset.category || '';
+            this.currentTopic = li.dataset.topic || '';
             this.loadNews();
           });
         });
 
-        // Bias UI only (no API side-effect yet)
+        // Bias UI only
         document.querySelectorAll('#bias-filter .bias-option').forEach(opt => {
           opt.addEventListener('click', () => {
             document.querySelectorAll('#bias-filter .bias-option').forEach(x => x.classList.remove('active'));
@@ -377,9 +376,7 @@
         });
       }
 
-      startAutoRefresh() {
-        setInterval(() => this.loadNews(), this.autoRefreshMs);
-      }
+      startAutoRefresh() { setInterval(() => this.loadNews(), this.autoRefreshMs); }
 
       async loadNews() {
         const loadingEl = document.getElementById('loading');
@@ -396,10 +393,8 @@
           const q = (document.getElementById('search-input').value || 'latest news').trim();
           const max = document.getElementById('max-select').value;
 
-          const params = new URLSearchParams({
-            q, max, expand: 'content'
-          });
-          if (this.currentCategory) params.set('category', this.currentCategory);
+          const params = new URLSearchParams({ q, max, expand: 'content' });
+          if (this.currentTopic) params.set('topic', this.currentTopic); // <-- FIX
 
           const res = await fetch(`${this.apiEndpoint}?${params.toString()}`);
           if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -407,7 +402,7 @@
           const data = await res.json();
           if (data.error) throw new Error(data.error);
 
-          // Optional time-range (client-side)
+          // client-side time filtering
           const timeRange = document.getElementById('time-range').value;
           const filtered = this.filterByTimeRange(data.articles || [], timeRange);
 
@@ -431,7 +426,6 @@
         if (range === '24h') cutoff = now - 24 * 60 * 60 * 1000;
         if (range === '7d')  cutoff = now - 7  * 24 * 60 * 60 * 1000;
         if (range === '30d') cutoff = now - 30 * 24 * 60 * 60 * 1000;
-
         return articles.filter(a => {
           if (!a.publishedAt) return true;
           const t = new Date(a.publishedAt).getTime();
@@ -447,9 +441,8 @@
         }
 
         el.innerHTML = articles.map(a => this.cardHTML(a)).join('');
-        // Make entire card clickable, but allow "Read" button to stop propagation
         el.querySelectorAll('.article-card').forEach(card => {
-          card.addEventListener('click', (e) => {
+          card.addEventListener('click', () => {
             const url = card.getAttribute('data-url');
             if (url) window.open(url, '_blank', 'noopener,noreferrer');
           });
@@ -467,7 +460,6 @@
         const img = article?.image || '';
         const url = article?.url || '#';
 
-        // Placeholder: bias/reliability not computed here (UI only)
         const reliabilityText = 'Unrated';
         const biasText = 'Neutral';
 
@@ -525,9 +517,7 @@
       }
     }
 
-    // Init
     document.addEventListener('DOMContentLoaded', () => new NewsApp());
   </script>
 </body>
 </html>
-
