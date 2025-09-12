@@ -2,17 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Spectrum News — Clean</title>
 
   <!-- Optional: Roboto font -->
-  <link
-    href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
-    rel="stylesheet"
-  />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"/>
 
   <style>
     /* ====== CLEAN WHITE THEME ====== */
@@ -64,7 +58,8 @@
       font-size: 22px; font-weight: 700; color: var(--primary-color);
       letter-spacing: 0.2px;
     }
-    .logo span { color: var(--dark-gray); font-weight: 500; }
+    /* CHANGED: make "News" red */
+    .logo span { color: var(--right-color); font-weight: 500; }
 
     .search-bar { flex: 1; }
     .search-form { display: flex; gap: 10px; }
@@ -77,10 +72,7 @@
       border-radius: 20px; font-weight: 500;
     }
 
-    .auth .sign-in {
-      background-color: var(--primary-color);
-      color: white; padding: 8px 14px; border-radius: var(--border-radius); font-weight: 500;
-    }
+    /* (Removed .auth/.sign-in styles — button no longer exists) */
 
     /* Main */
     main { padding: 18px 0; }
@@ -165,9 +157,7 @@
     .view-option.active { background: var(--primary-color); color: #fff; }
 
     /* News grid */
-    #news-container {
-      display: grid; grid-template-columns: 1fr; gap: 16px;
-    }
+    #news-container { display: grid; grid-template-columns: 1fr; gap: 16px; }
     .cards-2 #news-container { grid-template-columns: repeat(2, 1fr); }
     .cards-3 #news-container { grid-template-columns: repeat(3, 1fr); }
 
@@ -195,9 +185,7 @@
       background: #f2f3f4; color: #444; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
     }
 
-    .thumb {
-      width: 100%; height: 180px; object-fit: cover; background: #f2f2f2;
-    }
+    .thumb { width: 100%; height: 180px; object-fit: cover; background: #f2f2f2; }
 
     .article-content { padding: 14px; }
     .article-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
@@ -207,9 +195,7 @@
     .article-description { color: #444; font-size: 14px; margin-bottom: 12px; }
 
     .article-actions { display: flex; justify-content: space-between; align-items: center; }
-    .link-btn {
-      color: var(--primary-color); font-weight: 600; padding: 8px 10px; border-radius: 6px; background: #f0f6ff;
-    }
+    .link-btn { color: var(--primary-color); font-weight: 600; padding: 8px 10px; border-radius: 6px; background: #f0f6ff; }
 
     /* Loading & error */
     .loading { text-align: center; padding: 28px; color: #666; }
@@ -223,11 +209,11 @@
     footer .container { display: flex; justify-content: space-between; align-items: center; font-size: 13px; opacity: 0.9; }
 
     /* ======= Bias badge color helpers (updated to match new palette) ======= */
-    .bias-badge.left { background:#e7f3fb; color:#2E4172; }     /* left = blue */
-    .bias-badge.lean-left { background:#eaf6ff; color:#2E86C1; }/* center-left = sky blue */
+    .bias-badge.left { background:#e7f3fb; color:#2E4172; }
+    .bias-badge.lean-left { background:#eaf6ff; color:#2E86C1; }
     .bias-badge.center { background:#f2f3f4; color:#7F8C8D; }
-    .bias-badge.lean-right { background:#fef5e7; color:#F39C12; }/* center-right = orange */
-    .bias-badge.right { background:#fde9e7; color:#E74C3C; }    /* right = red */
+    .bias-badge.lean-right { background:#fef5e7; color:#F39C12; }
+    .bias-badge.right { background:#fde9e7; color:#E74C3C; }
     .bias-badge.unknown { background:#eee; color:#666; }
 
     /* Responsive */
@@ -260,9 +246,7 @@
         </form>
       </div>
 
-      <div class="auth">
-        <a class="sign-in" href="#" aria-disabled="true">Sign in</a>
-      </div>
+      <!-- Removed the non-functional Sign in button -->
     </div>
   </header>
 
@@ -425,7 +409,7 @@
         // Time range (client-side filter)
         document.getElementById('time-range').addEventListener('change', () => this.loadNews());
 
-        // Topics (categories map directly to API "category" param)
+        // Topics
         document.querySelectorAll('#topics li').forEach(li => {
           li.addEventListener('click', () => {
             document.querySelectorAll('#topics li').forEach(x => x.classList.remove('active'));
@@ -435,7 +419,7 @@
           });
         });
 
-        // Bias buttons -> call backend with ?bias=
+        // Bias buttons
         document.querySelectorAll('#bias-filter .bias-option').forEach(opt => {
           opt.addEventListener('click', () => {
             document.querySelectorAll('#bias-filter .bias-option').forEach(x => x.classList.remove('active'));
@@ -627,4 +611,3 @@
   </script>
 </body>
 </html>
-
