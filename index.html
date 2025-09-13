@@ -189,6 +189,19 @@
     footer { background: var(--dark-gray); color: #fff; padding: 20px 0; margin-top: 28px; }
     footer .container { display: flex; justify-content: space-between; align-items: center; font-size: 13px; opacity: 0.9; }
 
+    /* Topics list: clickable + active blue */
+    .topics-list li {
+      padding: 8px 0;
+      cursor: pointer;
+      color: #555;
+      transition: color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topics-list li:hover { color: var(--primary-color); }
+    .topics-list li.active { color: var(--primary-color); font-weight: 500; }
+
     /* Responsive */
     @media (max-width: 1024px) { .cards-3 #news-container { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 900px) {
@@ -316,8 +329,8 @@
         <section class="filter-section">
           <h2>Topics</h2>
           <ul class="topics-list" id="topics">
-            <li class="active" data-category="">All</li>
-            <li data-category="general">General</li>
+            <li data-category="">All</li>
+            <li class="active" data-category="general">General</li>
             <li data-category="world">World</li>
             <li data-category="business">Business</li>
             <li data-category="technology">Technology</li>
@@ -362,7 +375,7 @@
     class NewsApp {
       constructor() {
         this.apiEndpoint = '/.netlify/functions/news';
-        this.currentCategory = '';
+        this.currentCategory = 'general'; // default topic
         this.currentBias = 'default';
         this.autoRefreshMs = 30 * 60 * 1000;
         this.viewRoot = document.body;
@@ -525,7 +538,7 @@
         const srcName = article?.source?.name || 'Unknown';
         const dateText = this.humanTime(article?.publishedAt);
         const img = article?.image || '';
-        const url = article?.url || '#';
+        the url = article?.url || '#';
 
         // reliability score & class (3-tier)
         const rawScore = (typeof article?.reliabilityScore === 'number') ? article.reliabilityScore : 50;
