@@ -189,6 +189,19 @@
     footer { background: var(--dark-gray); color: #fff; padding: 20px 0; margin-top: 28px; }
     footer .container { display: flex; justify-content: space-between; align-items: center; font-size: 13px; opacity: 0.9; }
 
+    /* Topics list: clickable + active blue */
+    .topics-list li {
+      padding: 8px 0;
+      cursor: pointer;
+      color: #555;
+      transition: color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topics-list li:hover { color: var(--primary-color); }
+    .topics-list li.active { color: var(--primary-color); font-weight: 500; }
+
     /* Responsive */
     @media (max-width: 1024px) { .cards-3 #news-container { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 900px) {
@@ -362,7 +375,7 @@
     class NewsApp {
       constructor() {
         this.apiEndpoint = '/.netlify/functions/news';
-        this.currentCategory = '';
+        this.currentCategory = '';          // default: All
         this.currentBias = 'default';
         this.autoRefreshMs = 30 * 60 * 1000;
         this.viewRoot = document.body;
@@ -381,7 +394,7 @@
         ['country-select','language-select','max-select','time-range']
           .forEach(id => document.getElementById(id).addEventListener('change', () => this.loadNews()));
 
-        // Reliability slider -> server-side minReliability filter
+        // Reliability slider -> server-side minReliability filter (optional)
         document.getElementById('reliability').addEventListener('input', () => this.loadNews());
 
         // Balanced & Cluster toggles
@@ -398,7 +411,7 @@
           });
         });
 
-        // Bias buttons (treat like toggle/radio)
+        // Bias buttons
         document.querySelectorAll('#bias-filter .bias-option').forEach(opt => {
           opt.addEventListener('click', () => {
             document.querySelectorAll('#bias-filter .bias-option').forEach(x => {
@@ -448,7 +461,7 @@
           if (this.currentCategory) params.set('category', this.currentCategory);
           if (this.currentBias && this.currentBias !== 'default') params.set('bias', this.currentBias);
 
-          // Server-side time range
+          // Server-side time range (authoritative)
           const timeRange = document.getElementById('time-range').value;
           if (timeRange !== 'any') {
             const now = new Date();
@@ -460,15 +473,11 @@
             params.set('to', now.toISOString());
           }
 
-          // Reliability filter + options
+          // Optional extras
           const minReliability = parseInt(document.getElementById('reliability').value, 10) || 0;
           if (minReliability > 0) params.set('minReliability', String(minReliability));
-
-          const balanced = document.getElementById('balanced-toggle').checked;
-          if (balanced) params.set('balanced', '1');
-
-          const cluster = document.getElementById('cluster-toggle').checked;
-          if (cluster) params.set('cluster', 'title');
+          if (document.getElementById('balanced-toggle').checked) params.set('balanced','1');
+          if (document.getElementById('cluster-toggle').checked) params.set('cluster','title');
 
           const res = await fetch(`${this.apiEndpoint}?${params.toString()}`);
           if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -492,7 +501,7 @@
       renderArticles(articles) {
         const el = document.getElementById('news-container');
         if (!articles || !articles.length) {
-          el.innerHTML = `<div class="loading" style="padding:36px;">No articles found. Try a different search.</div>`;
+          el.innerHTML = `<div class="loading" style="padding:36px;">No articles found. Try a different search or broaden the time range.</div>`;
           return;
         }
 
@@ -525,7 +534,7 @@
         const srcName = article?.source?.name || 'Unknown';
         const dateText = this.humanTime(article?.publishedAt);
         const img = article?.image || '';
-        const url = article?.url || '#';
+        const url = article?.url || '#';   /* ← fixed (no stray text) */
 
         // reliability score & class (3-tier)
         const rawScore = (typeof article?.reliabilityScore === 'number') ? article.reliabilityScore : 50;
@@ -589,5 +598,3 @@
   </script>
 </body>
 </html>
-
-
