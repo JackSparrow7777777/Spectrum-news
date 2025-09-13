@@ -139,7 +139,32 @@
     .source-info { flex: 1; min-width: 0; }
     .source-name { font-weight: 600; font-size: 14px; }
     .source-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #777; font-size: 12px; margin-top: 2px; }
-    .reliability-badge { background: #e6f7e6; color: #27ae60; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    ./* Reliability badge – 3 tiers */
+.reliability-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* > 50 → Yellow */
+.reliability--over {
+  background: #fff6b3;  /* soft yellow */
+  color: #7a6700;
+}
+
+/* = 50 (default) → Green */
+.reliability--default {
+  background: #e6f7e6;  /* soft green */
+  color: #1b7f3a;
+}
+
+/* < 50 → Violet */
+.reliability--under {
+  background: #efe6ff;  /* soft violet */
+  color: #5b3aa3;
+}
+
     .bias-badge { background: #f2f3f4; color: #444; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
     .bias-badge.left{background:#e7f3fb;color:#2E4172}
     .bias-badge.lean-left{background:#eaf6ff;color:#2E86C1}
@@ -264,7 +289,7 @@
         </section>
 
         <section class="filter-section">
-          <h2>Reliability (UI)</h2>
+          <h2>Reliability</h2>
           <input id="reliability" class="slider" type="range" min="0" max="100" value="0" />
           <div class="slider-labels"><span>Low</span><span>Medium</span><span>High</span></div>
         </section>
@@ -501,8 +526,12 @@
         const img = article?.image || '';
         const url = article?.url || '#';
 
-        const reliabilityScore = typeof article?.reliabilityScore === 'number' ? Math.round(article.reliabilityScore) : null;
-        const reliabilityText = reliabilityScore !== null ? `Reliability ${reliabilityScore}` : 'Unrated';
+        // reliability score & class
+const rawScore = (typeof article?.reliabilityScore === 'number') ? article.reliabilityScore : 50;
+const score = Math.round(rawScore);
+const relClass = score > 50 ? 'reliability--over' : (score < 50 ? 'reliability--under' : 'reliability--default');
+const reliabilityText = `Reliability ${score}`;
+
 
         const detected = (article.bias || '').trim();
         const biasLabelMap = { 'left':'Left','lean-left':'Center Left','center':'Center','lean-right':'Center Right','right':'Right' };
@@ -533,6 +562,8 @@
               <div class="article-meta">
                 <span>${this.escape(dateText)}</span>
                 <span>${this.escape(new URL(url, location.href).hostname || '')}</span>
+                <span class="reliability-badge ${this.escape(relClass)}">${this.escape(reliabilityText)}</span>
+
               </div>
               <p class="article-description">${this.escape(desc)}</p>
               <div class="article-actions">
