@@ -100,9 +100,21 @@
     .center-bias{background: var(--center-color);} .center-right-bias{background: var(--center-right-color);}
     .right-bias{background: var(--right-color);}
 
-    /* Reliability slider track */
-    .slider { width: 100%; height: 5px; background: linear-gradient(to right, #ff4d4d, #ffcc00, #66cc66); outline: none; -webkit-appearance: none; border-radius: 5px; }
-    .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #fff; border: 2px solid var(--primary-color); border-radius: 50%; cursor: pointer; }
+    /* Reliability slider track: Violet → Green → Yellow (Low → Med → High) */
+    .slider {
+      width: 100%;
+      height: 5px;
+      background: linear-gradient(to right, #7e57c2, #27AE60, #ffeb3b);
+      outline: none;
+      -webkit-appearance: none;
+      border-radius: 5px;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      background: #fff; border: 2px solid var(--primary-color);
+      border-radius: 50%; cursor: pointer;
+    }
     .slider-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #666; }
 
     /* Content area */
@@ -577,4 +589,5 @@
   </script>
 </body>
 </html>
+
 
