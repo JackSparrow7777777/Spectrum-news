@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Spectrum News — Clean</title>
 
-  <!-- Optional: Roboto font -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
   <style>
     /* ====== CLEAN WHITE THEME ====== */
@@ -15,11 +15,11 @@
       --secondary-color: #FF5733;
 
       /* LEFT/RIGHT palette (US/KR) */
-      --left-color: #2E4172;         /* Left = blue (deep) */
-      --center-left-color: #87CEEB;  /* Center-Left = sky blue */
-      --center-color: #7F8C8D;       /* Center = neutral gray */
-      --center-right-color: #F39C12; /* Center-Right = orange */
-      --right-color: #E74C3C;        /* Right = red */
+      --left-color: #2E4172;
+      --center-left-color: #87CEEB;
+      --center-color: #7F8C8D;
+      --center-right-color: #F39C12;
+      --right-color: #E74C3C;
 
       --neutral-color: #27AE60;
       --light-gray: #f5f5f5;
@@ -27,7 +27,7 @@
       --dark-gray: #333333;
       --text-color: #333333;
       --border-radius: 8px;
-      --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      --box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -45,6 +45,9 @@
     ul { list-style: none; }
     button { cursor: pointer; border: none; background: none; font-family: inherit; }
 
+    /* Focus visibility for keyboard users */
+    :focus-visible { outline: 3px solid #3478F6; outline-offset: 2px; border-radius: 6px; }
+
     /* Header */
     header {
       background-color: #fff;
@@ -54,11 +57,7 @@
     }
     header .container { display: flex; gap: 16px; justify-content: space-between; align-items: center; }
 
-    .logo h1 {
-      font-size: 22px; font-weight: 700; color: var(--primary-color);
-      letter-spacing: 0.2px;
-    }
-    /* CHANGED: make "News" red */
+    .logo h1 { font-size: 22px; font-weight: 700; color: var(--primary-color); letter-spacing: 0.2px; }
     .logo span { color: var(--right-color); font-weight: 500; }
 
     .search-bar { flex: 1; }
@@ -67,12 +66,7 @@
       width: 100%; padding: 10px 14px; border: 1px solid var(--medium-gray);
       border-radius: 20px; font-size: 14px; background: #fff;
     }
-    .search-btn {
-      background: var(--primary-color); color: #fff; padding: 10px 16px;
-      border-radius: 20px; font-weight: 500;
-    }
-
-    /* (Removed .auth/.sign-in styles — button no longer exists) */
+    .search-btn { background: var(--primary-color); color: #fff; padding: 10px 16px; border-radius: 20px; font-weight: 500; }
 
     /* Main */
     main { padding: 18px 0; }
@@ -85,18 +79,16 @@
     }
 
     .filter-section { margin-bottom: 22px; }
-    .filter-section h2 {
-      font-size: 18px; margin-bottom: 12px; color: var(--dark-gray);
-    }
-    .filter-section h3 {
-      font-size: 14px; margin: 12px 0 8px; color: var(--dark-gray);
-    }
+    .filter-section h2 { font-size: 18px; margin-bottom: 12px; color: var(--dark-gray); }
+    .filter-section h3 { font-size: 14px; margin: 12px 0 8px; color: var(--dark-gray); }
 
-    /* Basic selects */
     .select {
       width: 100%; padding: 10px 12px; border: 1px solid var(--medium-gray);
       border-radius: var(--border-radius); background: #fff; font-size: 14px;
     }
+
+    .toggle-row { display: flex; align-items: center; gap: 10px; font-size: 14px; margin-top: 8px; }
+    .toggle-row input { transform: translateY(1px); }
 
     /* Bias chips */
     .bias-filter { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -113,46 +105,21 @@
     .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #fff; border: 2px solid var(--primary-color); border-radius: 50%; cursor: pointer; }
     .slider-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #666; }
 
-    /* Topics */
-    .topics-list li {
-      padding: 8px 0; cursor: pointer; color: #555; transition: color 0.15s;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .topics-list li:hover { color: var(--primary-color); }
-    .topics-list li.active { color: var(--primary-color); font-weight: 500; }
-
     /* Content area */
     .content { flex: 1; min-width: 0; }
 
-    /* Status bar */
     .status-bar {
       display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
       background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow);
       padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #666;
     }
-    .pill {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--light-gray); border-radius: 999px; padding: 6px 10px; font-weight: 500;
-    }
-    .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--primary-color);
-      animation: pulse 1.8s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0% { transform: scale(1); opacity: 0.8; }
-      50% { transform: scale(1.25); opacity: 1; }
-      100% { transform: scale(1); opacity: 0.8; }
-    }
+    .pill { display: inline-flex; align-items: center; gap: 8px; background: var(--light-gray); border-radius: 999px; padding: 6px 10px; font-weight: 500; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary-color); animation: pulse 1.8s ease-in-out infinite; }
+    @keyframes pulse { 0%{transform:scale(1);opacity:.8} 50%{transform:scale(1.25);opacity:1} 100%{transform:scale(1);opacity:.8} }
+    @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
 
-    /* View options */
-    .view-options {
-      display: flex; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow);
-      overflow: hidden; margin-bottom: 16px;
-    }
-    .view-option {
-      padding: 10px 16px; font-weight: 500; transition: background-color 0.15s; flex: 0 0 auto;
-    }
+    .view-options { display: flex; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); overflow: hidden; margin-bottom: 16px; }
+    .view-option { padding: 10px 16px; font-weight: 500; transition: background-color 0.15s; flex: 0 0 auto; }
     .view-option:hover { background: var(--light-gray); }
     .view-option.active { background: var(--primary-color); color: #fff; }
 
@@ -167,54 +134,34 @@
     }
     .article-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
 
-    .article-source {
-      display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--medium-gray);
-    }
-    .source-logo {
-      width: 36px; height: 36px; background: var(--light-gray); border-radius: 6px; display: grid; place-items: center; font-weight: 700; color: #666;
-    }
+    .article-source { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--medium-gray); }
+    .source-logo { width: 36px; height: 36px; background: var(--light-gray); border-radius: 6px; display: grid; place-items: center; font-weight: 700; color: #666; }
     .source-info { flex: 1; min-width: 0; }
     .source-name { font-weight: 600; font-size: 14px; }
-    .source-meta {
-      display: flex; gap: 8px; flex-wrap: wrap; color: #777; font-size: 12px; margin-top: 2px;
-    }
-    .reliability-badge {
-      background: #e6f7e6; color: #27ae60; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
-    }
-    .bias-badge {
-      background: #f2f3f4; color: #444; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
-    }
+    .source-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #777; font-size: 12px; margin-top: 2px; }
+    .reliability-badge { background: #e6f7e6; color: #27ae60; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .bias-badge { background: #f2f3f4; color: #444; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .bias-badge.left{background:#e7f3fb;color:#2E4172}
+    .bias-badge.lean-left{background:#eaf6ff;color:#2E86C1}
+    .bias-badge.center{background:#f2f3f4;color:#7F8C8D}
+    .bias-badge.lean-right{background:#fef5e7;color:#F39C12}
+    .bias-badge.right{background:#fde9e7;color:#E74C3C}
+    .bias-badge.unknown{background:#eee;color:#666}
 
     .thumb { width: 100%; height: 180px; object-fit: cover; background: #f2f2f2; }
 
     .article-content { padding: 14px; }
     .article-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
-    .article-meta {
-      display: flex; justify-content: space-between; gap: 6px; color: #666; font-size: 13px; margin-bottom: 10px;
-    }
+    .article-meta { display: flex; justify-content: space-between; gap: 6px; color: #666; font-size: 13px; margin-bottom: 10px; }
     .article-description { color: #444; font-size: 14px; margin-bottom: 12px; }
-
     .article-actions { display: flex; justify-content: space-between; align-items: center; }
     .link-btn { color: var(--primary-color); font-weight: 600; padding: 8px 10px; border-radius: 6px; background: #f0f6ff; }
 
-    /* Loading & error */
     .loading { text-align: center; padding: 28px; color: #666; }
-    .error {
-      background: #fee; color: #b40000; padding: 12px 14px; border-radius: var(--border-radius);
-      border-left: 4px solid #b40000; margin-bottom: 16px;
-    }
+    .error { background: #fee; color: #b40000; padding: 12px 14px; border-radius: var(--border-radius); border-left: 4px solid #b40000; margin-bottom: 16px; }
 
-    /* Footer */
     footer { background: var(--dark-gray); color: #fff; padding: 20px 0; margin-top: 28px; }
     footer .container { display: flex; justify-content: space-between; align-items: center; font-size: 13px; opacity: 0.9; }
-
-    /* ======= Bias badge color helpers (updated to match new palette) ======= */
-    .bias-badge.left { background:#e7f3fb; color:#2E4172; }
-    .bias-badge.lean-left { background:#eaf6ff; color:#2E86C1; }
-    .bias-badge.center { background:#f2f3f4; color:#7F8C8D; }
-    .bias-badge.lean-right { background:#fef5e7; color:#F39C12; }
-    .bias-badge.right { background:#fde9e7; color:#E74C3C; }
-    .bias-badge.unknown { background:#eee; color:#666; }
 
     /* Responsive */
     @media (max-width: 1024px) { .cards-3 #news-container { grid-template-columns: repeat(2, 1fr); } }
@@ -232,12 +179,9 @@
 </head>
 
 <body class="cards-3">
-  <!-- ===== Header ===== -->
   <header>
     <div class="container">
-      <div class="logo">
-        <h1>Spectrum <span>News</span></h1>
-      </div>
+      <div class="logo"><h1>Spectrum <span>News</span></h1></div>
 
       <div class="search-bar">
         <form id="search-form" class="search-form" autocomplete="off">
@@ -245,12 +189,9 @@
           <button class="search-btn" type="submit">Search</button>
         </form>
       </div>
-
-      <!-- Removed the non-functional Sign in button -->
     </div>
   </header>
 
-  <!-- ===== Main ===== -->
   <main>
     <div class="container">
       <!-- Sidebar -->
@@ -283,47 +224,49 @@
             <option value="ja">Japanese</option>
           </select>
 
-         <h3>Articles</h3>
-<select id="max-select" class="select">
-  <option value="10">10 articles</option>
-  <option value="25" selected>25 articles</option>
-  <option value="50">50 articles</option>
-  <option value="100">100 articles</option>
-</select>
-
+          <h3>Articles</h3>
+          <select id="max-select" class="select">
+            <option value="10">10 articles</option>
+            <option value="25" selected>25 articles</option>
+            <option value="50">50 articles</option>
+            <option value="100">100 articles</option>
+          </select>
         </section>
 
-        <!-- Bias buttons -->
+        <!-- Bias + toggles -->
         <section class="filter-section">
           <h2>Bias</h2>
-          <div class="bias-filter" id="bias-filter">
-            <div class="bias-option active" data-bias="default">
+          <div class="bias-filter" id="bias-filter" role="group" aria-label="Bias filter">
+            <div class="bias-option active" data-bias="default" aria-pressed="true">
               <div class="bias-circle" style="background:#e0e0e0"></div><small>Default</small>
             </div>
-            <div class="bias-option" data-bias="left">
+            <div class="bias-option" data-bias="left" aria-pressed="false">
               <div class="bias-circle left-bias"></div><small>Left</small>
             </div>
-            <div class="bias-option" data-bias="lean-left">
+            <div class="bias-option" data-bias="lean-left" aria-pressed="false">
               <div class="bias-circle center-left-bias"></div><small>CL</small>
             </div>
-            <div class="bias-option" data-bias="center">
+            <div class="bias-option" data-bias="center" aria-pressed="false">
               <div class="bias-circle center-bias"></div><small>Center</small>
             </div>
-            <div class="bias-option" data-bias="lean-right">
+            <div class="bias-option" data-bias="lean-right" aria-pressed="false">
               <div class="bias-circle center-right-bias"></div><small>CR</small>
             </div>
-            <div class="bias-option" data-bias="right">
+            <div class="bias-option" data-bias="right" aria-pressed="false">
               <div class="bias-circle right-bias"></div><small>Right</small>
             </div>
           </div>
+
+          <label class="toggle-row">
+            <input type="checkbox" id="balanced-toggle" />
+            <span>Balanced view (even mix)</span>
+          </label>
         </section>
 
         <section class="filter-section">
           <h2>Reliability (UI)</h2>
           <input id="reliability" class="slider" type="range" min="0" max="100" value="0" />
-          <div class="slider-labels">
-            <span>Low</span><span>Medium</span><span>High</span>
-          </div>
+          <div class="slider-labels"><span>Low</span><span>Medium</span><span>High</span></div>
         </section>
 
         <section class="filter-section">
@@ -334,6 +277,14 @@
             <option value="7d">Past 7 days</option>
             <option value="30d">Past 30 days</option>
           </select>
+        </section>
+
+        <section class="filter-section">
+          <h2>Noise Control</h2>
+          <label class="toggle-row">
+            <input type="checkbox" id="cluster-toggle" checked />
+            <span>Cluster similar stories</span>
+          </label>
         </section>
 
         <section class="filter-section">
@@ -361,9 +312,9 @@
         </div>
 
         <div class="view-options" role="tablist" aria-label="View options">
-          <button class="view-option" data-view="1">List</button>
-          <button class="view-option active" data-view="2">2-up</button>
-          <button class="view-option" data-view="3">3-up</button>
+          <button class="view-option" data-view="1" role="tab" aria-selected="false">List</button>
+          <button class="view-option active" data-view="2" role="tab" aria-selected="true">2-up</button>
+          <button class="view-option" data-view="3" role="tab" aria-selected="false">3-up</button>
         </div>
 
         <div id="error" class="error" style="display:none;"></div>
@@ -386,30 +337,30 @@
       constructor() {
         this.apiEndpoint = '/.netlify/functions/news';
         this.currentCategory = '';
-        this.currentBias = 'default'; // track selected bias
-        this.autoRefreshMs = 30 * 60 * 1000; // 30 minutes
-        this.viewRoot = document.body; // toggles grid columns with classes
+        this.currentBias = 'default';
+        this.autoRefreshMs = 30 * 60 * 1000;
+        this.viewRoot = document.body;
         this.bindUI();
         this.startAutoRefresh();
-        this.loadNews(); // initial
+        this.loadNews();
       }
 
       bindUI() {
         document.getElementById('year').textContent = new Date().getFullYear();
 
-        // Search (submit + enter)
         document.getElementById('search-form').addEventListener('submit', (e) => {
-          e.preventDefault();
-          this.loadNews();
+          e.preventDefault(); this.loadNews();
         });
 
-        // Basic selects
-        document.getElementById('country-select').addEventListener('change', () => this.loadNews());
-        document.getElementById('language-select').addEventListener('change', () => this.loadNews());
-        document.getElementById('max-select').addEventListener('change', () => this.loadNews());
+        ['country-select','language-select','max-select','time-range']
+          .forEach(id => document.getElementById(id).addEventListener('change', () => this.loadNews()));
 
-        // Time range (client-side filter)
-        document.getElementById('time-range').addEventListener('change', () => this.loadNews());
+        // Reliability slider -> server-side minReliability filter
+        document.getElementById('reliability').addEventListener('input', () => this.loadNews());
+
+        // Balanced & Cluster toggles
+        document.getElementById('balanced-toggle').addEventListener('change', () => this.loadNews());
+        document.getElementById('cluster-toggle').addEventListener('change', () => this.loadNews());
 
         // Topics
         document.querySelectorAll('#topics li').forEach(li => {
@@ -421,31 +372,32 @@
           });
         });
 
-        // Bias buttons
+        // Bias buttons (treat like toggle/radio)
         document.querySelectorAll('#bias-filter .bias-option').forEach(opt => {
           opt.addEventListener('click', () => {
-            document.querySelectorAll('#bias-filter .bias-option').forEach(x => x.classList.remove('active'));
-            opt.classList.add('active');
+            document.querySelectorAll('#bias-filter .bias-option').forEach(x => {
+              x.classList.remove('active'); x.setAttribute('aria-pressed','false');
+            });
+            opt.classList.add('active'); opt.setAttribute('aria-pressed','true');
             this.currentBias = opt.dataset.bias || 'default';
             this.loadNews();
           });
         });
 
-        // View options
-        document.querySelectorAll('.view-option').forEach(btn => {
+        // View options with ARIA states
+        const viewBtns = document.querySelectorAll('.view-option');
+        viewBtns.forEach(btn => {
           btn.addEventListener('click', () => {
-            document.querySelectorAll('.view-option').forEach(x => x.classList.remove('active'));
-            btn.classList.add('active');
+            viewBtns.forEach(x => { x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
+            btn.classList.add('active'); btn.setAttribute('aria-selected','true');
             const mode = btn.dataset.view;
-            this.viewRoot.classList.remove('cards-1', 'cards-2', 'cards-3');
+            this.viewRoot.classList.remove('cards-1','cards-2','cards-3');
             this.viewRoot.classList.add(`cards-${mode}`);
           });
         });
       }
 
-      startAutoRefresh() {
-        setInterval(() => this.loadNews(), this.autoRefreshMs);
-      }
+      startAutoRefresh() { setInterval(() => this.loadNews(), this.autoRefreshMs); }
 
       async loadNews() {
         const loadingEl = document.getElementById('loading');
@@ -465,23 +417,43 @@
           const max = document.getElementById('max-select').value;
 
           const params = new URLSearchParams({ q, country, lang, max, expand: 'content' });
+
+          // Category & bias
           if (this.currentCategory) params.set('category', this.currentCategory);
           if (this.currentBias && this.currentBias !== 'default') params.set('bias', this.currentBias);
 
+          // Server-side time range
+          const timeRange = document.getElementById('time-range').value;
+          if (timeRange !== 'any') {
+            const now = new Date();
+            let ms = 0;
+            if (timeRange === '24h') ms = 24*60*60*1000;
+            if (timeRange === '7d')  ms = 7*24*60*60*1000;
+            if (timeRange === '30d') ms = 30*24*60*60*1000;
+            params.set('from', new Date(Date.now() - ms).toISOString());
+            params.set('to', now.toISOString());
+          }
+
+          // Reliability filter + options
+          const minReliability = parseInt(document.getElementById('reliability').value, 10) || 0;
+          if (minReliability > 0) params.set('minReliability', String(minReliability));
+
+          const balanced = document.getElementById('balanced-toggle').checked;
+          if (balanced) params.set('balanced', '1');
+
+          const cluster = document.getElementById('cluster-toggle').checked;
+          if (cluster) params.set('cluster', 'title');
+
           const res = await fetch(`${this.apiEndpoint}?${params.toString()}`);
           if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-
           const data = await res.json();
           if (data.error) throw new Error(data.error);
 
-          // Optional time-range (client-side)
-          const timeRange = document.getElementById('time-range').value;
-          const filtered = this.filterByTimeRange(data.articles || [], timeRange);
-
-          this.renderArticles(filtered);
+          const articles = data.articles || [];
+          this.renderArticles(articles);
 
           const cached = res.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
-          statusText.textContent = `Loaded ${filtered.length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
+          statusText.textContent = `Loaded ${articles.length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
           cacheText.textContent = `Response: ${cached}`;
         } catch (err) {
           errorEl.textContent = `Failed to load news: ${err.message}`;
@@ -489,21 +461,6 @@
         } finally {
           loadingEl.style.display = 'none';
         }
-      }
-
-      filterByTimeRange(articles, range) {
-        if (range === 'any') return articles;
-        const now = Date.now();
-        let cutoff = 0;
-        if (range === '24h') cutoff = now - 24 * 60 * 60 * 1000;
-        if (range === '7d')  cutoff = now - 7  * 24 * 60 * 60 * 1000;
-        if (range === '30d') cutoff = now - 30 * 24 * 60 * 60 * 1000;
-
-        return articles.filter(a => {
-          if (!a.publishedAt) return true;
-          const t = new Date(a.publishedAt).getTime();
-          return isNaN(t) ? true : t >= cutoff;
-        });
       }
 
       renderArticles(articles) {
@@ -514,13 +471,23 @@
         }
 
         el.innerHTML = articles.map(a => this.cardHTML(a)).join('');
-        // Make entire card clickable, but allow "Read" button to stop propagation
+
+        // Make entire card clickable + keyboard activatable
         el.querySelectorAll('.article-card').forEach(card => {
-          card.addEventListener('click', (e) => {
+          card.addEventListener('click', () => {
             const url = card.getAttribute('data-url');
             if (url) window.open(url, '_blank', 'noopener,noreferrer');
           });
+          card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              const url = card.getAttribute('data-url');
+              if (url) window.open(url, '_blank', 'noopener,noreferrer');
+            }
+          });
         });
+
+        // Keep button clicks local
         el.querySelectorAll('.link-btn').forEach(btn => {
           btn.addEventListener('click', (e) => e.stopPropagation());
         });
@@ -534,17 +501,11 @@
         const img = article?.image || '';
         const url = article?.url || '#';
 
-        const reliabilityText = 'Unrated';
+        const reliabilityScore = typeof article?.reliabilityScore === 'number' ? Math.round(article.reliabilityScore) : null;
+        const reliabilityText = reliabilityScore !== null ? `Reliability ${reliabilityScore}` : 'Unrated';
 
-        // Build gray badge from article.bias
-        const detected = (article.bias || '').trim(); // '', 'left','lean-left','center','lean-right','right'
-        const biasLabelMap = {
-          'left': 'Left',
-          'lean-left': 'Center Left',
-          'center': 'Center',
-          'lean-right': 'Center Right',
-          'right': 'Right'
-        };
+        const detected = (article.bias || '').trim();
+        const biasLabelMap = { 'left':'Left','lean-left':'Center Left','center':'Center','lean-right':'Center Right','right':'Right' };
         const biasLabel = biasLabelMap[detected] || 'Unknown';
         const biasClass = detected || 'unknown';
 
@@ -561,7 +522,11 @@
               </div>
             </div>
 
-            ${img ? `<img class="thumb" src="${this.escape(img)}" alt="" onerror="this.style.display='none'">` : ''}
+            ${img ? `<img class="thumb"
+                           src="${this.escape(img)}" alt=""
+                           loading="lazy" decoding="async" referrerpolicy="no-referrer"
+                           width="640" height="360"
+                           onerror="this.style.display='none'">` : ''}
 
             <div class="article-content">
               <h3 class="article-title">${this.escape(title)}</h3>
@@ -578,38 +543,21 @@
         `;
       }
 
-      truncate(t, n) {
-        if (!t) return '';
-        return t.length > n ? t.slice(0, n - 1) + '…' : t;
-      }
-
+      truncate(t, n) { if (!t) return ''; return t.length > n ? t.slice(0, n - 1) + '…' : t; }
       humanTime(iso) {
         if (!iso) return 'Unknown';
-        const d = new Date(iso);
-        if (isNaN(d)) return 'Unknown';
-        const diffMs = Date.now() - d.getTime();
-        const h = Math.floor(diffMs / (1000 * 60 * 60));
-        if (h < 1) return 'Just now';
-        if (h < 24) return `${h}h ago`;
-        const days = Math.floor(h / 24);
-        if (days === 1) return 'Yesterday';
+        const d = new Date(iso); if (isNaN(d)) return 'Unknown';
+        const diffMs = Date.now() - d.getTime(); const h = Math.floor(diffMs / (1000*60*60));
+        if (h < 1) return 'Just now'; if (h < 24) return `${h}h ago`;
+        const days = Math.floor(h / 24); if (days === 1) return 'Yesterday';
         return d.toLocaleDateString();
       }
-
-      initial(name) {
-        const c = (name || '').trim()[0];
-        return (c || '?').toUpperCase();
-      }
-
-      escape(str) {
-        return String(str || '').replace(/[&<>"']/g, s => ({
-          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        }[s]));
-      }
+      initial(name) { const c = (name || '').trim()[0]; return (c || '?').toUpperCase(); }
+      escape(str) { return String(str || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
     }
 
-    // Init
     document.addEventListener('DOMContentLoaded', () => new NewsApp());
   </script>
 </body>
 </html>
+
