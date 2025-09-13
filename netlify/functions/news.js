@@ -33,16 +33,13 @@ const BIAS_BUCKETS = {
   ]
 };
 
-// Extract hostname and a simple registrable domain (handles co.uk/com.au etc.)
 function parseHostParts(u) {
   try {
     const hostname = new URL(u).hostname.replace(/^www\./i, '');
     const parts = hostname.split('.');
     const two = parts.slice(-2).join('.');
     const three = parts.slice(-3).join('.');
-    const twoLevelTLDs = new Set([
-      'co.uk','com.au','com.br','co.jp','co.kr','co.in','com.sg','com.hk'
-    ]);
+    const twoLevelTLDs = new Set(['co.uk','com.au','com.br','co.jp','co.kr','co.in','com.sg','com.hk']);
     const registrable = twoLevelTLDs.has(two) ? three : two;
     return { hostname, registrable };
   } catch {
@@ -50,7 +47,6 @@ function parseHostParts(u) {
   }
 }
 
-// Fast lookup map {domain -> bias}
 const DOMAIN_TO_BIAS = (() => {
   const m = new Map();
   for (const [bias, list] of Object.entries(BIAS_BUCKETS)) {
@@ -62,98 +58,117 @@ const DOMAIN_TO_BIAS = (() => {
 function detectBiasByUrl(url) {
   const { hostname, registrable } = parseHostParts(url || '');
   if (!hostname) return '';
-  // exact host first (covers abcnews.go.com), then registrable (cnn.com)
   if (DOMAIN_TO_BIAS.has(hostname)) return DOMAIN_TO_BIAS.get(hostname);
   if (DOMAIN_TO_BIAS.has(registrable)) return DOMAIN_TO_BIAS.get(registrable);
   return '';
 }
 
-// Valid GNews categories for /top-headlines
 const ALLOWED_CATEGORIES = new Set([
   'general','world','nation','business','technology','entertainment','sports','science','health'
 ]);
 
-exports.handler = async (event, context) => {
-  // CORS
+exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
   };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
-  }
-  if (event.httpMethod !== 'GET') {
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
+  if (event.httpMethod !== 'GET')
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
-  }
 
   try {
     const qp = event.queryStringParameters || {};
 
-    // ---- existing params (kept) ----
-    const q         = String(qp.q || 'latest news').trim() || 'latest news';
-    const lang      = String(qp.lang || 'en');
-    const country   = String(qp.country || 'us');
-    const maxReq    = Math.max(1, Math.min(parseInt(qp.max || '10', 10) || 10, 100));
-    let   category  = String(qp.category || qp.topic || '').toLowerCase().trim();
-    const expand    = qp.expand === 'content' ? 'content' : 'summary';
-    const from      = String(qp.from || '');
-    const to        = String(qp.to || '');
+    // ----- Params -----
+    const q        = String(qp.q || 'latest news').trim() || 'latest news';
+    const lang     = String(qp.lang || 'en');
+    const country  = String(qp.country || 'us');
+    const maxReq   = Math.max(1, Math.min(parseInt(qp.max || '10', 10) || 10, 100));
+    let category   = String(qp.category || qp.topic || '').toLowerCase().trim();
+    const expand   = qp.expand === 'content' ? 'content' : 'summary';
+    const from     = String(qp.from || '');
+    const to       = String(qp.to || '');
 
-    // ---- NEW: bias param (or legacy `spectrum`) ----
     let bias = String(qp.bias || qp.spectrum || '').toLowerCase().trim();
     if (!['left','lean-left','center','lean-right','right','default',''].includes(bias)) bias = '';
     const doBiasFilter = !!bias && bias !== 'default';
 
     if (!ALLOWED_CATEGORIES.has(category)) category = '';
 
-    // Cache key includes normalized params
+    // Cache key
     const cacheKey = JSON.stringify({ q, lang, country, maxReq, category, expand, from, to, bias: doBiasFilter ? bias : '' });
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
       return { statusCode: 200, headers: { ...headers, 'X-Cache': 'HIT' }, body: JSON.stringify(cached.data) };
     }
 
-    // Choose endpoint: category => top-headlines (supports q + category), else search
+    // Endpoint + base params (without max/page)
     const endpoint = category ? 'top-headlines' : 'search';
-    const apiUrl = new URL(`https://gnews.io/api/v4/${endpoint}`);
-
-    apiUrl.searchParams.append('apikey', process.env.GNEWS_API_KEY);
-    apiUrl.searchParams.append('lang', lang);
-    apiUrl.searchParams.append('expand', expand);
-
-    // Always include q so "search AND category" works
-    apiUrl.searchParams.append('q', q);
-
-    // If we're going to filter by bias, request more so we can trim after filtering
-    const fetchMax = doBiasFilter ? Math.min(100, Math.max(maxReq, Math.ceil(maxReq * 2.5))) : maxReq;
-    apiUrl.searchParams.append('max', String(fetchMax));
-
+    const base = new URLSearchParams();
+    base.append('apikey', process.env.GNEWS_API_KEY);
+    base.append('lang', lang);
+    base.append('expand', expand);
+    base.append('q', q);
     if (endpoint === 'search') {
-      if (country) apiUrl.searchParams.append('country', country);
-      if (from)    apiUrl.searchParams.append('from', from);
-      if (to)      apiUrl.searchParams.append('to', to);
+      if (country) base.append('country', country);
+      if (from)    base.append('from', from);
+      if (to)      base.append('to', to);
     } else {
-      apiUrl.searchParams.append('category', category);
-      if (country) apiUrl.searchParams.append('country', country);
+      base.append('category', category);
+      if (country) base.append('country', country);
     }
 
-    console.log('Fetching:', apiUrl.toString().replace(process.env.GNEWS_API_KEY, 'HIDDEN'));
+    // How many raw items to attempt (over-fetch if bias filter enabled)
+    const targetRaw = doBiasFilter
+      ? Math.min(100, Math.max(maxReq, Math.ceil(maxReq * 2.5)))
+      : maxReq;
 
-    const resp = await fetch(apiUrl.toString());
-    if (!resp.ok) {
-      const txt = await resp.text();
-      return { statusCode: resp.status, headers, body: JSON.stringify({ error: 'Failed to fetch news', status: resp.status, message: txt }) };
+    // GNews returns at most ~25 per request; paginate with &page=#
+    const PER_PAGE_CAP = 25; // observed cap
+    const perPage = Math.min(PER_PAGE_CAP, targetRaw);
+
+    const collected = [];
+    const seen = new Set(); // dedupe by URL
+    let page = 1;
+
+    while (collected.length < targetRaw && page <= Math.ceil(100 / perPage)) {
+      const url = new URL(`https://gnews.io/api/v4/${endpoint}`);
+      // copy base params
+      for (const [k, v] of base.entries()) url.searchParams.append(k, v);
+      url.searchParams.append('max', String(Math.min(perPage, targetRaw - collected.length)));
+      url.searchParams.append('page', String(page));
+
+      console.log('Fetching:', url.toString().replace(process.env.GNEWS_API_KEY, 'HIDDEN'));
+
+      const resp = await fetch(url.toString());
+      if (!resp.ok) {
+        const txt = await resp.text();
+        return { statusCode: resp.status, headers, body: JSON.stringify({ error: 'Failed to fetch news', status: resp.status, message: txt }) };
+      }
+      const json = await resp.json();
+      const batch = Array.isArray(json.articles) ? json.articles : [];
+
+      // Stop if no more data
+      if (batch.length === 0) break;
+
+      // Append with de-dupe by absolute URL
+      for (const a of batch) {
+        const key = a?.url || a?.source?.url || '';
+        if (key && seen.has(key)) continue;
+        if (key) seen.add(key);
+        collected.push(a);
+      }
+
+      // If the API returned less than requested per page, we've likely exhausted results
+      if (batch.length < perPage) break;
+
+      page += 1;
     }
-    const json = await resp.json();
 
-    if (!Array.isArray(json.articles)) {
-      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Invalid response from news API', received: json }) };
-    }
-
-    // Normalize + annotate bias for each article
-    let articles = json.articles.map(a => {
+    // Normalize + annotate bias
+    let articles = collected.map(a => {
       const primaryUrl = a.source?.url || a.url || '';
       const biasDetected = detectBiasByUrl(primaryUrl);
       return {
@@ -163,24 +178,17 @@ exports.handler = async (event, context) => {
         url: a.url,
         image: a.image,
         publishedAt: a.publishedAt,
-        source: {
-          name: a.source?.name || 'Unknown Source',
-          url: a.source?.url || ''
-        },
-        bias: biasDetected || '' // '', 'left', 'lean-left', 'center', 'lean-right', 'right'
+        source: { name: a.source?.name || 'Unknown Source', url: a.source?.url || '' },
+        bias: biasDetected || '' // '', 'left','lean-left','center','lean-right','right'
       };
     });
 
-    // Apply bias filter (if any)
-    if (doBiasFilter) {
-      articles = articles.filter(a => a.bias === bias);
-    }
-
-    // Final trim
+    // Bias filter (if any), then trim to user request
+    if (doBiasFilter) articles = articles.filter(a => a.bias === bias);
     articles = articles.slice(0, maxReq);
 
     const payload = {
-      totalArticles: json.totalArticles || articles.length,
+      totalArticles: articles.length,
       articles,
       fetchedAt: new Date().toISOString(),
       endpoint,
@@ -195,11 +203,9 @@ exports.handler = async (event, context) => {
       headers: { ...headers, 'X-Cache': 'MISS', 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     };
-
   } catch (err) {
     console.error('Function error:', err);
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'Internal server error', message: err.message, timestamp: new Date().toISOString() }) };
   }
 };
-
 
