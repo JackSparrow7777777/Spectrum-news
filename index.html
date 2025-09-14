@@ -54,7 +54,7 @@
     header .container { display: flex; gap: 16px; justify-content: space-between; align-items: center; }
 
     .logo h1 { font-size: 22px; font-weight: 700; color: var(--primary-color); letter-spacing: 0.2px; }
-    .logo span { color: var(--right-color); font-weight: 500; }
+    .logo span { color: #E74C3C; font-weight: 500; }
 
     .search-bar { flex: 1; }
     .search-form { display: flex; gap: 10px; }
@@ -62,10 +62,7 @@
       width: 100%; padding: 10px 14px; border: 1px solid var(--medium-gray);
       border-radius: 20px; font-size: 14px; background: #fff;
     }
-    .search-btn {
-      background: var(--primary-color); color: #fff; padding: 10px 16px;
-      border-radius: 20px; font-weight: 500;
-    }
+    .search-btn { background: var(--primary-color); color: #fff; padding: 10px 16px; border-radius: 20px; font-weight: 500; }
 
     /* Main */
     main { padding: 18px 0; }
@@ -86,6 +83,9 @@
       border-radius: var(--border-radius); background: #fff; font-size: 14px;
     }
 
+    .toggle-row { display: flex; align-items: center; gap: 10px; font-size: 14px; margin-top: 8px; }
+    .toggle-row input { transform: translateY(1px); }
+
     /* Bias chips */
     .bias-filter { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .bias-option { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
@@ -97,8 +97,20 @@
     .right-bias{background: var(--right-color);}
 
     /* Reliability slider (Violet → Green → Yellow) */
-    .slider { width: 100%; height: 5px; background: linear-gradient(to right, #7e57c2, #27AE60, #ffeb3b); outline: none; -webkit-appearance: none; border-radius: 5px; }
-    .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #fff; border: 2px solid var(--primary-color); border-radius: 50%; cursor: pointer; }
+    .slider {
+      width: 100%;
+      height: 5px;
+      background: linear-gradient(to right, #7e57c2, #27AE60, #ffeb3b);
+      outline: none;
+      -webkit-appearance: none;
+      border-radius: 5px;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      background: #fff; border: 2px solid var(--primary-color);
+      border-radius: 50%; cursor: pointer;
+    }
     .slider-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #666; }
 
     /* Topics */
@@ -119,10 +131,10 @@
       padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #666;
     }
     .pill { display: inline-flex; align-items: center; gap: 8px; background: var(--light-gray); border-radius: 999px; padding: 6px 10px; font-weight: 500; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary-color); animation: pulse 1.8s ease-in-out infinite; }
-    @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #3478F6; animation: pulse 1.8s ease-in-out infinite; }
+    @keyframes pulse { 0%{transform:scale(1);opacity:.8} 50%{transform:scale(1.25);opacity:1} 100%{transform:scale(1);opacity:.8} }
+    @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
 
-    /* View options */
     .view-options { display: flex; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); overflow: hidden; margin-bottom: 16px; }
     .view-option { padding: 10px 16px; font-weight: 500; transition: background-color 0.15s; flex: 0 0 auto; }
     .view-option:hover { background: var(--light-gray); }
@@ -139,9 +151,7 @@
     }
     .article-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
 
-    .article-source {
-      display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--medium-gray);
-    }
+    .article-source { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--medium-gray); }
     .source-logo { width: 36px; height: 36px; background: var(--light-gray); border-radius: 6px; display: grid; place-items: center; font-weight: 700; color: #666; }
     .source-info { flex: 1; min-width: 0; }
     .source-name { font-weight: 600; font-size: 14px; }
@@ -192,12 +202,9 @@
 </head>
 
 <body class="cards-3">
-  <!-- ===== Header ===== -->
   <header>
     <div class="container">
-      <div class="logo">
-        <h1>Spectrum <span>News</span></h1>
-      </div>
+      <div class="logo"><h1>Spectrum <span>News</span></h1></div>
 
       <div class="search-bar">
         <form id="search-form" class="search-form" autocomplete="off">
@@ -208,7 +215,6 @@
     </div>
   </header>
 
-  <!-- ===== Main ===== -->
   <main>
     <div class="container">
       <!-- Sidebar -->
@@ -250,34 +256,38 @@
           </select>
         </section>
 
-        <!-- Bias buttons -->
+        <!-- Bias + toggles -->
         <section class="filter-section">
           <h2>Bias</h2>
-          <div class="bias-filter" id="bias-filter">
-            <div class="bias-option active" data-bias="default">
+          <div class="bias-filter" id="bias-filter" role="group" aria-label="Bias filter">
+            <div class="bias-option active" data-bias="default" aria-pressed="true">
               <div class="bias-circle" style="background:#e0e0e0"></div><small>Default</small>
             </div>
-            <div class="bias-option" data-bias="left">
+            <div class="bias-option" data-bias="left" aria-pressed="false">
               <div class="bias-circle left-bias"></div><small>Left</small>
             </div>
-            <div class="bias-option" data-bias="lean-left">
+            <div class="bias-option" data-bias="lean-left" aria-pressed="false">
               <div class="bias-circle center-left-bias"></div><small>CL</small>
             </div>
-            <div class="bias-option" data-bias="center">
+            <div class="bias-option" data-bias="center" aria-pressed="false">
               <div class="bias-circle center-bias"></div><small>Center</small>
             </div>
-            <div class="bias-option" data-bias="lean-right">
+            <div class="bias-option" data-bias="lean-right" aria-pressed="false">
               <div class="bias-circle center-right-bias"></div><small>CR</small>
             </div>
-            <div class="bias-option" data-bias="right">
+            <div class="bias-option" data-bias="right" aria-pressed="false">
               <div class="bias-circle right-bias"></div><small>Right</small>
             </div>
           </div>
+
+          <label class="toggle-row">
+            <input type="checkbox" id="balanced-toggle" />
+            <span>Balanced view (even mix)</span>
+          </label>
         </section>
 
         <section class="filter-section">
           <h2>Reliability</h2>
-          <!-- fires only on release, not per pixel drag -->
           <input id="reliability" class="slider" type="range" min="0" max="100" value="0" />
           <div class="slider-labels"><span>Low</span><span>Medium</span><span>High</span></div>
         </section>
@@ -290,6 +300,14 @@
             <option value="7d">Past 7 days</option>
             <option value="30d">Past 30 days</option>
           </select>
+        </section>
+
+        <section class="filter-section">
+          <h2>Noise Control</h2>
+          <label class="toggle-row">
+            <input type="checkbox" id="cluster-toggle" checked />
+            <span>Cluster similar stories</span>
+          </label>
         </section>
 
         <section class="filter-section">
@@ -317,9 +335,9 @@
         </div>
 
         <div class="view-options" role="tablist" aria-label="View options">
-          <button class="view-option" data-view="1">List</button>
-          <button class="view-option active" data-view="2">2-up</button>
-          <button class="view-option" data-view="3">3-up</button>
+          <button class="view-option" data-view="1" role="tab" aria-selected="false">List</button>
+          <button class="view-option active" data-view="2" role="tab" aria-selected="true">2-up</button>
+          <button class="view-option" data-view="3" role="tab" aria-selected="false">3-up</button>
         </div>
 
         <div id="error" class="error" style="display:none;"></div>
@@ -351,7 +369,6 @@
         this.loadNews();
       }
 
-      // simple debounce
       debounce(fn, delay = 400) {
         let t;
         return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), delay); };
@@ -360,22 +377,21 @@
       bindUI() {
         document.getElementById('year').textContent = new Date().getFullYear();
 
-        // Search (submit)
         document.getElementById('search-form').addEventListener('submit', (e) => {
           e.preventDefault();
           this.loadNews();
         });
 
         // Basic selects (debounced)
-        document.getElementById('country-select').addEventListener('change', () => this.debouncedLoadNews());
-        document.getElementById('language-select').addEventListener('change', () => this.debouncedLoadNews());
-        document.getElementById('max-select').addEventListener('change', () => this.debouncedLoadNews());
+        ['country-select','language-select','max-select','time-range']
+          .forEach(id => document.getElementById(id).addEventListener('change', () => this.debouncedLoadNews()));
 
-        // Time range (debounced)
-        document.getElementById('time-range').addEventListener('change', () => this.debouncedLoadNews());
-
-        // Reliability slider: fire only on change (not on every pixel)
+        // Reliability slider on change (not every pixel)
         document.getElementById('reliability').addEventListener('change', () => this.debouncedLoadNews());
+
+        // Balanced + Cluster toggles
+        document.getElementById('balanced-toggle').addEventListener('change', () => this.debouncedLoadNews());
+        document.getElementById('cluster-toggle').addEventListener('change', () => this.debouncedLoadNews());
 
         // Topics
         document.querySelectorAll('#topics li').forEach(li => {
@@ -390,20 +406,23 @@
         // Bias buttons
         document.querySelectorAll('#bias-filter .bias-option').forEach(opt => {
           opt.addEventListener('click', () => {
-            document.querySelectorAll('#bias-filter .bias-option').forEach(x => x.classList.remove('active'));
-            opt.classList.add('active');
+            document.querySelectorAll('#bias-filter .bias-option').forEach(x => {
+              x.classList.remove('active'); x.setAttribute('aria-pressed','false');
+            });
+            opt.classList.add('active'); opt.setAttribute('aria-pressed','true');
             this.currentBias = opt.dataset.bias || 'default';
             this.debouncedLoadNews();
           });
         });
 
         // View options
-        document.querySelectorAll('.view-option').forEach(btn => {
+        const viewBtns = document.querySelectorAll('.view-option');
+        viewBtns.forEach(btn => {
           btn.addEventListener('click', () => {
-            document.querySelectorAll('.view-option').forEach(x => x.classList.remove('active'));
-            btn.classList.add('active');
+            viewBtns.forEach(x => { x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
+            btn.classList.add('active'); btn.setAttribute('aria-selected','true');
             const mode = btn.dataset.view;
-            this.viewRoot.classList.remove('cards-1', 'cards-2', 'cards-3');
+            this.viewRoot.classList.remove('cards-1','cards-2','cards-3');
             this.viewRoot.classList.add(`cards-${mode}`);
           });
         });
@@ -432,20 +451,24 @@
           if (this.currentCategory) params.set('category', this.currentCategory);
           if (this.currentBias && this.currentBias !== 'default') params.set('bias', this.currentBias);
 
-          // Authoritative time range: send to server (server filters locally; GNews does not see it)
-          const timeRange = document.getElementById('time-range').value;
-          if (timeRange !== 'any') {
+          // Time range (server will filter; GNews never sees from/to)
+          const tr = document.getElementById('time-range').value;
+          if (tr !== 'any') {
             let ms = 0;
-            if (timeRange === '24h') ms = 24 * 60 * 60 * 1000;
-            if (timeRange === '7d')  ms = 7  * 24 * 60 * 60 * 1000;
-            if (timeRange === '30d') ms = 30 * 24 * 60 * 60 * 1000;
+            if (tr === '24h') ms = 24*60*60*1000;
+            if (tr === '7d')  ms = 7*24*60*60*1000;
+            if (tr === '30d') ms = 30*24*60*60*1000;
             params.set('from', new Date(Date.now() - ms).toISOString());
             params.set('to', new Date().toISOString());
           }
 
-          // Reliability floor (optional)
+          // Reliability floor
           const minReliability = parseInt(document.getElementById('reliability').value, 10) || 0;
           if (minReliability > 0) params.set('minReliability', String(minReliability));
+
+          // Balanced + cluster toggles
+          if (document.getElementById('balanced-toggle').checked) params.set('balanced','1');
+          if (document.getElementById('cluster-toggle').checked) params.set('cluster','title');
 
           const res = await fetch(`${this.apiEndpoint}?${params.toString()}`);
           if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -455,7 +478,6 @@
 
           this.renderArticles(data.articles || []);
 
-          // Show status; include quota note when applicable
           if (data.quotaExceeded) {
             statusText.textContent = `Showing cached results — GNews daily quota reached`;
             cacheText.textContent = `Response: quota (cached)`;
@@ -480,7 +502,6 @@
         }
 
         el.innerHTML = articles.map(a => this.cardHTML(a)).join('');
-        // Make entire card clickable, but allow "Read" button to stop propagation
         el.querySelectorAll('.article-card').forEach(card => {
           card.addEventListener('click', () => {
             const url = card.getAttribute('data-url');
@@ -494,9 +515,7 @@
             }
           });
         });
-        el.querySelectorAll('.link-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => e.stopPropagation());
-        });
+        el.querySelectorAll('.link-btn').forEach(btn => btn.addEventListener('click', (e) => e.stopPropagation()));
       }
 
       cardHTML(article) {
@@ -507,13 +526,11 @@
         const img = article?.image || '';
         const url = article?.url || '#';
 
-        // reliability score & class (3-tier)
         const rawScore = (typeof article?.reliabilityScore === 'number') ? article.reliabilityScore : 50;
         const score = Math.round(rawScore);
         const relClass = score > 50 ? 'reliability--over' : (score < 50 ? 'reliability--under' : 'reliability--default');
         const reliabilityText = `Reliability ${score}`;
 
-        // Bias label
         const detected = (article.bias || '').trim();
         const biasLabelMap = { 'left':'Left','lean-left':'Center Left','center':'Center','lean-right':'Center Right','right':'Right' };
         const biasLabel = biasLabelMap[detected] || 'Unknown';
@@ -550,31 +567,20 @@
       }
 
       truncate(t, n) { if (!t) return ''; return t.length > n ? t.slice(0, n - 1) + '…' : t; }
-
       humanTime(iso) {
         if (!iso) return 'Unknown';
-        const d = new Date(iso);
-        if (isNaN(d)) return 'Unknown';
-        const diffMs = Date.now() - d.getTime();
-        const h = Math.floor(diffMs / (1000 * 60 * 60));
-        if (h < 1) return 'Just now';
-        if (h < 24) return `${h}h ago`;
-        const days = Math.floor(h / 24);
-        if (days === 1) return 'Yesterday';
+        const d = new Date(iso); if (isNaN(d)) return 'Unknown';
+        const diffMs = Date.now() - d.getTime(); const h = Math.floor(diffMs / (1000*60*60));
+        if (h < 1) return 'Just now'; if (h < 24) return `${h}h ago`;
+        const days = Math.floor(h / 24); if (days === 1) return 'Yesterday';
         return d.toLocaleDateString();
       }
-
       initial(name) { const c = (name || '').trim()[0]; return (c || '?').toUpperCase(); }
-
-      escape(str) {
-        return String(str || '').replace(/[&<>"']/g, s => ({
-          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        }[s]));
-      }
+      escape(str) { return String(str || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
     }
 
-    // Init
     document.addEventListener('DOMContentLoaded', () => new NewsApp());
   </script>
 </body>
 </html>
+
