@@ -45,7 +45,6 @@ const RELIABILITY_SCORES = {
 };
 const DEFAULT_RELIABILITY = 50;
 
-// Extract hostname & registrable domain (handles co.uk/com.au etc.)
 function parseHostParts(u) {
   try {
     const hostname = new URL(u).hostname.replace(/^www\./i, '');
@@ -55,12 +54,9 @@ function parseHostParts(u) {
     const twoLevelTLDs = new Set(['co.uk','com.au','com.br','co.jp','co.kr','co.in','com.sg','com.hk']);
     const registrable = twoLevelTLDs.has(two) ? three : two;
     return { hostname, registrable };
-  } catch {
-    return { hostname: '', registrable: '' };
-  }
+  } catch { return { hostname: '', registrable: '' }; }
 }
 
-// Bias lookup
 const DOMAIN_TO_BIAS = (() => {
   const m = new Map();
   for (const [bias, list] of Object.entries(BIAS_BUCKETS)) {
@@ -89,7 +85,7 @@ const ALLOWED_CATEGORIES = new Set([
   'general','world','nation','business','technology','entertainment','sports','science','health'
 ]);
 
-// Simple title key for clustering (optional future use)
+// Title key for clustering
 const STOP = new Set(['the','a','an','to','of','in','on','and','or','as','for','at','by','with','from','about','amid','over','after','before','into','out','up','down']);
 function titleKey(s) {
   if (!s) return '';
@@ -115,15 +111,15 @@ exports.handler = async (event) => {
   try {
     const qp = event.queryStringParameters || {};
 
-    // ---- Params ----
+    // ----- Params -----
     const q        = String(qp.q || 'latest news').trim() || 'latest news';
     const lang     = String(qp.lang || 'en');
     const country  = String(qp.country || 'us');
     const maxReq   = Math.max(1, Math.min(parseInt(qp.max || '10', 10) || 10, 100));
-    let   category = String(qp.category || qp.topic || '').toLowerCase().trim();
+    let category   = String(qp.category || qp.topic || '').toLowerCase().trim();
     const expand   = qp.expand === 'content' ? 'content' : 'summary';
-    const from     = String(qp.from || ''); // ISO8601 (client sends; we filter locally)
-    const to       = String(qp.to || '');   // ISO8601
+    const from     = String(qp.from || '');
+    const to       = String(qp.to || '');
 
     let bias = String(qp.bias || qp.spectrum || '').toLowerCase().trim();
     if (!['left','lean-left','center','lean-right','right','default',''].includes(bias)) bias = '';
@@ -131,19 +127,25 @@ exports.handler = async (event) => {
 
     const minReliability = Math.max(0, Math.min(parseInt(qp.minReliability || '0', 10) || 0, 100));
 
+    const balanced = qp.balanced === '1';
+    const clusterMode = String(qp.cluster || '').toLowerCase(); // 'title' | ''
+
     if (!ALLOWED_CATEGORIES.has(category)) category = '';
 
-    // Cache key includes normalized params
-    const cacheKey = JSON.stringify({ q, lang, country, maxReq, category, expand, from, to, bias: doBiasFilter ? bias : '', minReliability });
+    // Cache key
+    const cacheKey = JSON.stringify({
+      q, lang, country, maxReq, category, expand, from, to,
+      bias: doBiasFilter ? bias : '', minReliability, balanced, clusterMode
+    });
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
       return { statusCode: 200, headers: { ...headers, 'X-Cache': 'HIT', 'Content-Type': 'application/json' }, body: JSON.stringify(cached.data) };
     }
 
-    // Choose endpoint
+    // Endpoint
     const endpoint = category ? 'top-headlines' : 'search';
 
-    // Build base GNews params — NOTE: we DO NOT send from/to (plan-safe)
+    // Build base params (no from/to to avoid plan 403s)
     const base = new URLSearchParams();
     base.append('apikey', process.env.GNEWS_API_KEY);
     base.append('lang', lang);
@@ -152,15 +154,15 @@ exports.handler = async (event) => {
     if (endpoint === 'search') {
       if (country) base.append('country', country);
     } else {
-      base.append('topic', category); // GNews v4 uses "topic" for headlines
+      base.append('topic', category);
       if (country) base.append('country', country);
     }
 
-    // Over-fetch a bit when we need to filter locally (time/bias/reliability)
+    // Over-fetch when we need local post-filtering
     const timeFiltering = !!(from || to);
-    const needOverFetch = timeFiltering || doBiasFilter || (minReliability > 0);
+    const needOverFetch = timeFiltering || doBiasFilter || (minReliability > 0) || balanced || (clusterMode === 'title');
     const targetRaw = needOverFetch
-      ? Math.min(100, Math.max(maxReq, Math.ceil(maxReq * 1.5))) // reduced from 2.5x to save quota
+      ? Math.min(100, Math.max(maxReq, Math.ceil(maxReq * 1.5)))
       : maxReq;
 
     const PER_PAGE_CAP = 25;
@@ -178,14 +180,14 @@ exports.handler = async (event) => {
 
       const resp = await fetch(url.toString());
 
-      // --- Graceful handling when daily quota is exceeded ---
+      // Quota exceeded → serve cached (or empty) with flag
       if (resp.status === 403) {
         const fallback = cached?.data || {
           totalArticles: 0,
           articles: [],
           fetchedAt: new Date().toISOString(),
           endpoint,
-          parameters: { q, lang, country, max: maxReq, category, expand, from, to, bias: doBiasFilter ? bias : 'default', minReliability }
+          parameters: { q, lang, country, max: maxReq, category, expand, from, to, bias: doBiasFilter ? bias : 'default', minReliability, balanced, cluster: clusterMode || 'off' }
         };
         return {
           statusCode: 200,
@@ -245,9 +247,40 @@ exports.handler = async (event) => {
       articles = articles.filter(a => (a.reliabilityScore ?? DEFAULT_RELIABILITY) >= minReliability);
     }
 
-    // Bias filter (if selected)
+    // Noise control: cluster by title (keeps first of each cluster)
+    if (clusterMode === 'title') {
+      const seenKeys = new Set();
+      const clustered = [];
+      for (const a of articles) {
+        const k = titleKey(a.title);
+        if (!seenKeys.has(k)) { seenKeys.add(k); clustered.push(a); }
+      }
+      articles = clustered;
+    }
+
+    // Bias filter or balanced sampler
     if (doBiasFilter) {
       articles = articles.filter(a => a.bias === bias);
+    } else if (balanced) {
+      const buckets = ['left','lean-left','center','lean-right','right'];
+      const perBucket = Math.ceil(maxReq / buckets.length);
+      const picked = [];
+      const used = new Set();
+
+      // Take up to perBucket from each bucket
+      for (const b of buckets) {
+        const list = articles.filter(a => a.bias === b && !used.has(a.url));
+        for (const a of list.slice(0, perBucket)) {
+          picked.push(a); used.add(a.url);
+        }
+      }
+      // Fill remaining from any bias, newest first
+      if (picked.length < maxReq) {
+        const rest = articles.filter(a => !used.has(a.url))
+          .sort((a, b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
+        picked.push(...rest.slice(0, maxReq - picked.length));
+      }
+      articles = picked;
     }
 
     // Final trim
@@ -258,7 +291,12 @@ exports.handler = async (event) => {
       articles,
       fetchedAt: new Date().toISOString(),
       endpoint,
-      parameters: { q, lang, country, max: maxReq, category, expand, from, to, bias: doBiasFilter ? bias : 'default', minReliability }
+      parameters: {
+        q, lang, country, max: maxReq, category, expand, from, to,
+        bias: doBiasFilter ? bias : (balanced ? 'balanced' : 'default'),
+        minReliability,
+        cluster: clusterMode || 'off'
+      }
     };
 
     cache.set(cacheKey, { data: payload, timestamp: Date.now() });
@@ -269,7 +307,6 @@ exports.handler = async (event) => {
       headers: { ...headers, 'X-Cache': 'MISS', 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     };
-
   } catch (err) {
     console.error('Function error:', err);
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'Internal server error', message: err.message, timestamp: new Date().toISOString() }) };
