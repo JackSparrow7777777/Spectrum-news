@@ -43,9 +43,9 @@ const RELIABILITY_SCORES = {
   'politico.com': 68, 'nbcnews.com': 70, 'abcnews.go.com': 72, 'wsj.com': 82,
   'thehill.com': 65, 'news.yahoo.com': 68, 'semafor.com': 68
 };
-// Fallback score when unknown (keeps slider usable without a giant mapping)
 const DEFAULT_RELIABILITY = 50;
 
+// Extract hostname & registrable domain (handles co.uk/com.au etc.)
 function parseHostParts(u) {
   try {
     const hostname = new URL(u).hostname.replace(/^www\./i, '');
@@ -55,9 +55,12 @@ function parseHostParts(u) {
     const twoLevelTLDs = new Set(['co.uk','com.au','com.br','co.jp','co.kr','co.in','com.sg','com.hk']);
     const registrable = twoLevelTLDs.has(two) ? three : two;
     return { hostname, registrable };
-  } catch { return { hostname: '', registrable: '' }; }
+  } catch {
+    return { hostname: '', registrable: '' };
+  }
 }
 
+// Bias lookup
 const DOMAIN_TO_BIAS = (() => {
   const m = new Map();
   for (const [bias, list] of Object.entries(BIAS_BUCKETS)) {
@@ -86,7 +89,7 @@ const ALLOWED_CATEGORIES = new Set([
   'general','world','nation','business','technology','entertainment','sports','science','health'
 ]);
 
-// Very light title normalization for clustering
+// Simple title key for clustering (optional future use)
 const STOP = new Set(['the','a','an','to','of','in','on','and','or','as','for','at','by','with','from','about','amid','over','after','before','into','out','up','down']);
 function titleKey(s) {
   if (!s) return '';
@@ -94,7 +97,6 @@ function titleKey(s) {
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
     .filter(w => w && !STOP.has(w));
-  // pick the first 6 distinct words (order-insensitive key)
   const uniq = [];
   for (const w of words) { if (!uniq.includes(w)) uniq.push(w); if (uniq.length >= 6) break; }
   return uniq.sort().join('-');
@@ -108,41 +110,40 @@ exports.handler = async (event) => {
   };
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
-  if (event.httpMethod !== 'GET')
-    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  if (event.httpMethod !== 'GET') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
   try {
     const qp = event.queryStringParameters || {};
 
-    // ----- Params -----
+    // ---- Params ----
     const q        = String(qp.q || 'latest news').trim() || 'latest news';
     const lang     = String(qp.lang || 'en');
     const country  = String(qp.country || 'us');
     const maxReq   = Math.max(1, Math.min(parseInt(qp.max || '10', 10) || 10, 100));
-    let category   = String(qp.category || qp.topic || '').toLowerCase().trim();
+    let   category = String(qp.category || qp.topic || '').toLowerCase().trim();
     const expand   = qp.expand === 'content' ? 'content' : 'summary';
-    const from     = String(qp.from || '');
-    const to       = String(qp.to || '');
+    const from     = String(qp.from || ''); // ISO8601 (client sends; we filter locally)
+    const to       = String(qp.to || '');   // ISO8601
 
     let bias = String(qp.bias || qp.spectrum || '').toLowerCase().trim();
     if (!['left','lean-left','center','lean-right','right','default',''].includes(bias)) bias = '';
     const doBiasFilter = !!bias && bias !== 'default';
 
     const minReliability = Math.max(0, Math.min(parseInt(qp.minReliability || '0', 10) || 0, 100));
-    const balanced = qp.balanced === '1';
-    const clusterMode = String(qp.cluster || '').toLowerCase(); // 'title' | ''
 
     if (!ALLOWED_CATEGORIES.has(category)) category = '';
 
-    // Cache key
-    const cacheKey = JSON.stringify({ q, lang, country, maxReq, category, expand, from, to, bias: doBiasFilter ? bias : '', minReliability, balanced, clusterMode });
+    // Cache key includes normalized params
+    const cacheKey = JSON.stringify({ q, lang, country, maxReq, category, expand, from, to, bias: doBiasFilter ? bias : '', minReliability });
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
       return { statusCode: 200, headers: { ...headers, 'X-Cache': 'HIT', 'Content-Type': 'application/json' }, body: JSON.stringify(cached.data) };
     }
 
-    // Endpoint + immutable base params
+    // Choose endpoint
     const endpoint = category ? 'top-headlines' : 'search';
+
+    // Build base GNews params — NOTE: we DO NOT send from/to (plan-safe)
     const base = new URLSearchParams();
     base.append('apikey', process.env.GNEWS_API_KEY);
     base.append('lang', lang);
@@ -150,26 +151,23 @@ exports.handler = async (event) => {
     base.append('q', q);
     if (endpoint === 'search') {
       if (country) base.append('country', country);
-      if (from)    base.append('from', from);
-      if (to)      base.append('to', to);
     } else {
-      base.append('category', category);
+      base.append('topic', category); // GNews v4 uses "topic" for headlines
       if (country) base.append('country', country);
-      // GNews doesn't honor from/to for top-headlines; search does.
     }
 
-    // How many raw items to attempt (over-fetch if we need balanced or bias filtering)
-    const needOverFetch = balanced || doBiasFilter;
+    // Over-fetch a bit when we need to filter locally (time/bias/reliability)
+    const timeFiltering = !!(from || to);
+    const needOverFetch = timeFiltering || doBiasFilter || (minReliability > 0);
     const targetRaw = needOverFetch
-      ? Math.min(100, Math.max(maxReq, Math.ceil(maxReq * 2.5)))
+      ? Math.min(100, Math.max(maxReq, Math.ceil(maxReq * 1.5))) // reduced from 2.5x to save quota
       : maxReq;
 
-    // GNews returns at most ~25 per request; paginate with &page=#
     const PER_PAGE_CAP = 25;
     const perPage = Math.min(PER_PAGE_CAP, targetRaw);
 
     const collected = [];
-    const seen = new Set(); // de-dupe by url
+    const seen = new Set();
     let page = 1;
 
     while (collected.length < targetRaw && page <= Math.ceil(100 / perPage)) {
@@ -178,13 +176,29 @@ exports.handler = async (event) => {
       url.searchParams.append('max', String(Math.min(perPage, targetRaw - collected.length)));
       url.searchParams.append('page', String(page));
 
-      console.log('Fetching:', url.toString().replace(process.env.GNEWS_API_KEY, 'HIDDEN'));
-
       const resp = await fetch(url.toString());
+
+      // --- Graceful handling when daily quota is exceeded ---
+      if (resp.status === 403) {
+        const fallback = cached?.data || {
+          totalArticles: 0,
+          articles: [],
+          fetchedAt: new Date().toISOString(),
+          endpoint,
+          parameters: { q, lang, country, max: maxReq, category, expand, from, to, bias: doBiasFilter ? bias : 'default', minReliability }
+        };
+        return {
+          statusCode: 200,
+          headers: { ...headers, 'X-Cache': cached ? 'STALE' : 'MISS', 'X-Quota-Exceeded': '1', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...fallback, quotaExceeded: true })
+        };
+      }
+
       if (!resp.ok) {
         const txt = await resp.text();
         return { statusCode: resp.status, headers, body: JSON.stringify({ error: 'Failed to fetch news', status: resp.status, message: txt }) };
       }
+
       const json = await resp.json();
       const batch = Array.isArray(json.articles) ? json.articles : [];
       if (batch.length === 0) break;
@@ -200,11 +214,9 @@ exports.handler = async (event) => {
       page += 1;
     }
 
-    // Normalize + annotate bias & reliability
+    // Normalize + annotate
     let articles = collected.map(a => {
       const primaryUrl = a.source?.url || a.url || '';
-      const biasDetected = detectBiasByUrl(primaryUrl);
-      const relScore = reliabilityByUrl(primaryUrl);
       return {
         title: a.title || 'No title',
         description: a.description || 'No description',
@@ -213,53 +225,32 @@ exports.handler = async (event) => {
         image: a.image,
         publishedAt: a.publishedAt,
         source: { name: a.source?.name || 'Unknown Source', url: a.source?.url || '' },
-        bias: biasDetected || '',                  // '', 'left', 'lean-left', 'center', 'lean-right', 'right'
-        reliabilityScore: relScore                 // 0..100 (fallback DEFAULT_RELIABILITY)
+        bias: detectBiasByUrl(primaryUrl) || '',
+        reliabilityScore: reliabilityByUrl(primaryUrl)
       };
     });
 
-    // Reliability filter
+    // Time filter (server-side)
+    if (from || to) {
+      const fromT = from ? Date.parse(from) : Number.NEGATIVE_INFINITY;
+      const toT   = to   ? Date.parse(to)   : Number.POSITIVE_INFINITY;
+      articles = articles.filter(a => {
+        const t = Date.parse(a.publishedAt || '');
+        return isNaN(t) ? true : (t >= fromT && t <= toT);
+      });
+    }
+
+    // Reliability floor
     if (minReliability > 0) {
       articles = articles.filter(a => (a.reliabilityScore ?? DEFAULT_RELIABILITY) >= minReliability);
     }
 
-    // Bias filter OR Balanced sampler
+    // Bias filter (if selected)
     if (doBiasFilter) {
       articles = articles.filter(a => a.bias === bias);
-    } else if (balanced) {
-      const buckets = ['left','lean-left','center','lean-right','right'];
-      const perBucket = Math.ceil(maxReq / buckets.length);
-      const picked = [];
-      const used = new Set();
-
-      // First pass: take up to perBucket from each bucket
-      for (const b of buckets) {
-        const list = articles.filter(a => a.bias === b && !used.has(a.url));
-        for (const a of list.slice(0, perBucket)) {
-          picked.push(a); used.add(a.url);
-        }
-      }
-      // Fill remaining from any bias, newest first
-      if (picked.length < maxReq) {
-        const rest = articles.filter(a => !used.has(a.url))
-          .sort((a, b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
-        picked.push(...rest.slice(0, maxReq - picked.length));
-      }
-      articles = picked;
     }
 
-    // Optional clustering (collapse near-duplicate titles)
-    if (clusterMode === 'title') {
-      const seenKeys = new Set();
-      const clustered = [];
-      for (const a of articles) {
-        const k = titleKey(a.title);
-        if (!seenKeys.has(k)) { seenKeys.add(k); clustered.push(a); }
-      }
-      articles = clustered;
-    }
-
-    // Final trim to request size
+    // Final trim
     articles = articles.slice(0, maxReq);
 
     const payload = {
@@ -267,12 +258,7 @@ exports.handler = async (event) => {
       articles,
       fetchedAt: new Date().toISOString(),
       endpoint,
-      parameters: {
-        q, lang, country, max: maxReq, category, expand, from, to,
-        bias: doBiasFilter ? bias : (balanced ? 'balanced' : 'default'),
-        minReliability,
-        cluster: clusterMode || 'off'
-      }
+      parameters: { q, lang, country, max: maxReq, category, expand, from, to, bias: doBiasFilter ? bias : 'default', minReliability }
     };
 
     cache.set(cacheKey, { data: payload, timestamp: Date.now() });
@@ -283,6 +269,7 @@ exports.handler = async (event) => {
       headers: { ...headers, 'X-Cache': 'MISS', 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     };
+
   } catch (err) {
     console.error('Function error:', err);
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'Internal server error', message: err.message, timestamp: new Date().toISOString() }) };
