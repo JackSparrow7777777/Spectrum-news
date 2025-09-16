@@ -171,7 +171,68 @@
     .bias-badge.right{background:#fde9e7;color:#E74C3C}
     .bias-badge.unknown{background:#eee;color:#666}
 
-    .thumb { width: 100%; height: 180px; object-fit: cover; background: #f2f2f2; }
+    /* FIXED IMAGE STYLES */
+    .thumb { 
+      width: 100%; 
+      background: #f2f2f2; 
+      display: block;
+    }
+
+    /* Different image heights based on view mode */
+    .cards-1 .thumb {
+      height: 120px; /* Shorter for list view */
+      object-fit: cover;
+    }
+
+    .cards-2 .thumb {
+      height: 160px; /* Medium for 2-up */
+      object-fit: cover;
+    }
+
+    .cards-3 .thumb {
+      height: 180px; /* Taller for 3-up */
+      object-fit: cover;
+    }
+
+    /* List view specific adjustments */
+    .cards-1 .article-card {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+    }
+
+    .cards-1 .article-source {
+      border-bottom: none;
+      border-right: 1px solid var(--medium-gray);
+      min-width: 200px;
+      flex-shrink: 0;
+    }
+
+    .cards-1 .thumb {
+      width: 200px;
+      height: 120px;
+      flex-shrink: 0;
+      object-fit: cover;
+      object-position: center top; /* Focus on top portion for better face visibility */
+    }
+
+    .cards-1 .article-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .cards-1 .article-title {
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+
+    .cards-1 .article-description {
+      font-size: 13px;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
 
     .article-content { padding: 14px; }
     .article-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
@@ -197,6 +258,22 @@
       header .container { flex-direction: column; align-items: stretch; }
       .search-form { width: 100%; }
       .cards-2 #news-container, .cards-3 #news-container { grid-template-columns: 1fr; }
+      
+      /* Stack list view on mobile */
+      .cards-1 .article-card {
+        flex-direction: column;
+      }
+      
+      .cards-1 .article-source {
+        border-right: none;
+        border-bottom: 1px solid var(--medium-gray);
+        min-width: auto;
+      }
+      
+      .cards-1 .thumb {
+        width: 100%;
+        height: 160px;
+      }
     }
   </style>
 </head>
@@ -583,4 +660,3 @@
   </script>
 </body>
 </html>
-
