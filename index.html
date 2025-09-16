@@ -171,30 +171,46 @@
     .bias-badge.right{background:#fde9e7;color:#E74C3C}
     .bias-badge.unknown{background:#eee;color:#666}
 
-    /* ==== NEW: Uniform media box + per-view fit rules ==== */
-    .thumb-frame {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 16 / 9;       /* Prevents layout shift */
-      background: #f2f2f2;
-      overflow: hidden;
-    }
-    .thumb-frame img.thumb {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      display: block;
-      object-fit: cover;          /* Default (2-up / 3-up): tidy crop */
-      object-position: center;    /* tweak to 'center top' if you prefer */
-      -webkit-user-select: none;
-      user-select: none;
-    }
-    /* In List view, show full image with subtle letterboxing */
-    .cards-1 .thumb-frame img.thumb {
-      object-fit: contain;
-      background: #0000000a;
-    }
+    /* ==== Uniform media box (unchanged default) ==== */
+.thumb-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #f2f2f2;
+  overflow: hidden;
+}
+.thumb-frame img.thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;       /* default for 2-up / 3-up */
+  object-position: center;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ==== List view: slightly smaller, still show full image (contain) ==== */
+.cards-1 .thumb-frame {
+  width: min(92%, 980px);  /* a touch narrower than the card, centered */
+  margin: 8px auto 0;
+  aspect-ratio: 18 / 9;    /* ~11% less tall than 16:9 */
+  border-radius: 10px;
+}
+.cards-1 .thumb-frame img.thumb {
+  object-fit: contain;     /* no crop in List */
+  background: #0000000a;   /* subtle letterbox */
+}
+
+/* Mobile: use full width and standard height so it doesn't feel cramped */
+@media (max-width: 700px) {
+  .cards-1 .thumb-frame {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+}
+
 
     .article-content { padding: 14px; }
     .article-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
