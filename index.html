@@ -221,6 +221,37 @@
     aspect-ratio: 16 / 9;
   }
 }
+    /* List view: card = 75% width, centered */
+.cards-1 #news-container {
+  justify-items: center;              /* center grid items */
+}
+
+.cards-1 .article-card {
+  width: 75%;                         /* ~75% of the content column */
+  max-width: 980px;                   /* optional upper bound */
+}
+
+/* Keep image coherent & full-bleed inside the smaller card */
+.cards-1 .article-card .thumb-frame{
+  width: 100%;
+  margin: 0;
+  aspect-ratio: 2 / 1;                /* slightly shorter than 16:9 */
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cards-1 .article-card .thumb-frame img.thumb{
+  object-fit: cover !important;       /* fill the frame, no gaps */
+  object-position: center 35%;        /* bias crop up a bit (tweak to taste) */
+}
+
+/* Mobile: use full width so it doesn't get cramped */
+@media (max-width: 900px){
+  .cards-1 #news-container { justify-items: stretch; }
+  .cards-1 .article-card { width: 100%; max-width: none; }
+  .cards-1 .article-card .thumb-frame { aspect-ratio: 16 / 9; }
+}
+
 
 
 
