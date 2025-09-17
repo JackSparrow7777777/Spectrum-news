@@ -1,5 +1,5 @@
 // netlify/functions/news.js
-// GNews API Serverless Function for Netlify (robust pagination + plan-cap detection)
+// GNews API Serverless Function for Netlify (parallel pagination + plan-cap detection)
 
 const cache = new Map();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
@@ -111,7 +111,6 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'GET') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
   const API_KEY = process.env.GNEWS_API_KEY || '';
-
   if (!API_KEY) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'Missing GNEWS_API_KEY env var' }) };
   }
@@ -134,7 +133,6 @@ exports.handler = async (event) => {
     const doBiasFilter = !!bias && bias !== 'default';
 
     const minReliability = Math.max(0, Math.min(parseInt(qp.minReliability || '0', 10) || 0, 100));
-
     const balanced = qp.balanced === '1';
     const clusterMode = String(qp.cluster || '').toLowerCase(); // 'title' | ''
 
@@ -174,18 +172,17 @@ exports.handler = async (event) => {
     const timeFiltering = !!(from || to);
     const needOverFetch = timeFiltering || doBiasFilter || (minReliability > 0) || balanced || (clusterMode === 'title');
 
-    // Essential: 25 per page max; we’ll detect effectivePerPage dynamically.
+    // Essential: 25 per page cap; detect effectivePerPage dynamically from first page
     const PER_PAGE_CAP = 25;
     const targetRaw = needOverFetch
       ? Math.min(100, Math.max(maxReq, Math.ceil(maxReq * 1.5)))
       : maxReq;
 
-    // ---- Robust pagination ----
+    // ---- Core fetching helpers ----
     const collected = [];
     const seen = new Set();
-    let page = 1;
-    let effectivePerPage = null;     // we’ll learn this after first call
-    let totalFromAPI = undefined;    // if GNews returns totalArticles
+    let totalFromAPI = undefined;
+    let effectivePerPage = null;
 
     const fetchPage = async (pageNo, perPageAsk) => {
       const url = new URL(`${API_BASE}/${endpoint}`);
@@ -201,55 +198,77 @@ exports.handler = async (event) => {
       return resp.json();
     };
 
-    // First page
+    function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+    async function fetchPageWithRetry(pageNo, perPageAsk, tries = 2){
+      try {
+        return await fetchPage(pageNo, perPageAsk);
+      } catch (e) {
+        if (tries > 1) { await sleep(250); return fetchPageWithRetry(pageNo, perPageAsk, tries - 1); }
+        throw e;
+      }
+    }
+
+    // ---- Page 1 (learn effectivePerPage) ----
     const first = await fetchPage(1, Math.min(PER_PAGE_CAP, targetRaw));
     const firstBatch = Array.isArray(first.articles) ? first.articles : [];
     totalFromAPI = typeof first.totalArticles === 'number' ? first.totalArticles : undefined;
-    effectivePerPage = Math.max(0, firstBatch.length); // usually 25 on Essential, 10 on Free
+    effectivePerPage = Math.max(0, firstBatch.length); // 25 on Essential, 10 on Free, etc.
 
     for (const a of firstBatch) {
       const key = a?.url || a?.source?.url || '';
       if (key && !seen.has(key)) { seen.add(key); collected.push(a); }
     }
 
-    // If nothing came back, bail early
+    // Early return if nothing
     if (collected.length === 0) {
       const payloadEmpty = basePayload({
         articles: [],
         endpoint, q, lang, country, maxReq, category, expand, from, to,
-        bias, doBiasFilter, minReliability, balanced, clusterMode,
+        bias: doBiasFilter ? bias : (balanced ? 'balanced' : 'default'),
+        doBiasFilter, minReliability, balanced, clusterMode,
         totalFromAPI, effectivePerPage,
         planLimited: null
       });
       cache.set(cacheKey, { data: payloadEmpty, timestamp: Date.now() });
       return {
         statusCode: 200,
-        headers: { ...headers, 'X-Cache': 'MISS', 'X-Key-Suffix': maskKey(API_KEY), 'X-Requested': String(maxReq), 'X-Delivered': '0', 'X-Effective-PerPage': String(effectivePerPage) },
+        headers: {
+          ...headers, 'X-Cache': 'MISS', 'X-Key-Suffix': maskKey(API_KEY),
+          'X-Requested': String(maxReq), 'X-Delivered': '0',
+          'X-Effective-PerPage': String(effectivePerPage || 0)
+        },
         body: JSON.stringify(payloadEmpty)
       };
     }
 
-    // Continue paging until we have enough or run out
-    // Compute a conservative max page count using what we actually got on page 1
+    // ---- Remaining pages IN PARALLEL ----
     const perEff = Math.max(1, effectivePerPage);
     const totalTarget = totalFromAPI ? Math.min(targetRaw, totalFromAPI) : targetRaw;
     const pagesNeeded = Math.ceil(totalTarget / perEff);
-    const hardStopPages = Math.max(2, Math.min(10, pagesNeeded)); // safety
 
-    page = 2;
-    while (collected.length < targetRaw && page <= hardStopPages) {
-      const next = await fetchPage(page, Math.min(PER_PAGE_CAP, targetRaw - collected.length));
-      const batch = Array.isArray(next.articles) ? next.articles : [];
-      if (batch.length === 0) break; // no more data
+    const remainingPages = [];
+    for (let p = 2; p <= pagesNeeded; p++) remainingPages.push(p);
+
+    // Respect Essential RPS: after the first request, 3 parallel is safe for 100 target
+    const perPageAsk = Math.min(PER_PAGE_CAP, targetRaw);
+
+    const results = await Promise.all(
+      remainingPages.map(p => fetchPageWithRetry(p, perPageAsk))
+    );
+
+    // Merge in page order (Promise.all preserves input order)
+    for (const nxt of results) {
+      const batch = Array.isArray(nxt?.articles) ? nxt.articles : [];
+      if (!batch.length) continue;
       for (const a of batch) {
         const key = a?.url || a?.source?.url || '';
         if (key && !seen.has(key)) { seen.add(key); collected.push(a); }
         if (collected.length >= targetRaw) break;
       }
-      page += 1;
+      if (collected.length >= targetRaw) break;
     }
 
-    // Normalize + annotate
+    // ---- Normalize + annotate ----
     let articles = collected.map(a => {
       const primaryUrl = a.source?.url || a.url || '';
       return {
@@ -280,7 +299,7 @@ exports.handler = async (event) => {
       articles = articles.filter(a => (a.reliabilityScore ?? DEFAULT_RELIABILITY) >= minReliability);
     }
 
-    // Noise control: cluster by title (keeps first of each cluster)
+    // Cluster by title (keeps first of each cluster)
     if (clusterMode === 'title') {
       const seenKeys = new Set();
       const clustered = [];
@@ -299,6 +318,7 @@ exports.handler = async (event) => {
       const perBucket = Math.ceil(maxReq / buckets.length);
       const picked = [];
       const used = new Set();
+
       for (const b of buckets) {
         const list = articles.filter(a => a.bias === b && !used.has(a.url));
         for (const a of list.slice(0, perBucket)) { picked.push(a); used.add(a.url); }
@@ -314,7 +334,7 @@ exports.handler = async (event) => {
     // Final trim to UI request
     articles = articles.slice(0, maxReq);
 
-    // Detect if plan/page cap is limiting us (e.g., effectivePerPage < PER_PAGE_CAP)
+    // Detect plan/page cap
     const planLimited = effectivePerPage > 0 && effectivePerPage < PER_PAGE_CAP ? effectivePerPage : null;
 
     const payload = basePayload({
@@ -374,4 +394,5 @@ function basePayload ({
     }
   };
 }
+
 
