@@ -1,8 +1,9 @@
 // netlify/functions/news.js
-// GNews API Serverless Function for Netlify
+// GNews API Serverless Function for Netlify (robust pagination + plan-cap detection)
 
 const cache = new Map();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+const API_BASE = 'https://gnews.io/api/v4';
 
 // ---- AllSides-style buckets (seed list — expand as you like) ----
 const BIAS_BUCKETS = {
@@ -103,10 +104,17 @@ exports.handler = async (event) => {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Content-Type': 'application/json; charset=utf-8',
   };
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
   if (event.httpMethod !== 'GET') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+
+  const API_KEY = process.env.GNEWS_API_KEY || '';
+
+  if (!API_KEY) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Missing GNEWS_API_KEY env var' }) };
+  }
 
   try {
     const qp = event.queryStringParameters || {};
@@ -139,15 +147,19 @@ exports.handler = async (event) => {
     });
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return { statusCode: 200, headers: { ...headers, 'X-Cache': 'HIT', 'Content-Type': 'application/json' }, body: JSON.stringify(cached.data) };
+      return {
+        statusCode: 200,
+        headers: { ...headers, 'X-Cache': 'HIT', 'X-Key-Suffix': maskKey(API_KEY) },
+        body: JSON.stringify(cached.data)
+      };
     }
 
     // Endpoint
     const endpoint = category ? 'top-headlines' : 'search';
 
-    // Build base params (no from/to to avoid plan 403s)
+    // Build base params
     const base = new URLSearchParams();
-    base.append('apikey', process.env.GNEWS_API_KEY);
+    base.append('apikey', API_KEY);
     base.append('lang', lang);
     base.append('expand', expand);
     base.append('q', q);
@@ -161,58 +173,79 @@ exports.handler = async (event) => {
     // Over-fetch when we need local post-filtering
     const timeFiltering = !!(from || to);
     const needOverFetch = timeFiltering || doBiasFilter || (minReliability > 0) || balanced || (clusterMode === 'title');
+
+    // Essential: 25 per page max; we’ll detect effectivePerPage dynamically.
+    const PER_PAGE_CAP = 25;
     const targetRaw = needOverFetch
       ? Math.min(100, Math.max(maxReq, Math.ceil(maxReq * 1.5)))
       : maxReq;
 
-    const PER_PAGE_CAP = 25;
-    const perPage = Math.min(PER_PAGE_CAP, targetRaw);
-
+    // ---- Robust pagination ----
     const collected = [];
     const seen = new Set();
     let page = 1;
+    let effectivePerPage = null;     // we’ll learn this after first call
+    let totalFromAPI = undefined;    // if GNews returns totalArticles
 
-    while (collected.length < targetRaw && page <= Math.ceil(100 / perPage)) {
-      const url = new URL(`https://gnews.io/api/v4/${endpoint}`);
+    const fetchPage = async (pageNo, perPageAsk) => {
+      const url = new URL(`${API_BASE}/${endpoint}`);
       for (const [k, v] of base.entries()) url.searchParams.append(k, v);
-      url.searchParams.append('max', String(Math.min(perPage, targetRaw - collected.length)));
-      url.searchParams.append('page', String(page));
-
+      url.searchParams.append('max', String(perPageAsk));
+      url.searchParams.append('page', String(pageNo));
       const resp = await fetch(url.toString());
-
-      // Quota exceeded → serve cached (or empty) with flag
-      if (resp.status === 403) {
-        const fallback = cached?.data || {
-          totalArticles: 0,
-          articles: [],
-          fetchedAt: new Date().toISOString(),
-          endpoint,
-          parameters: { q, lang, country, max: maxReq, category, expand, from, to, bias: doBiasFilter ? bias : 'default', minReliability, balanced, cluster: clusterMode || 'off' }
-        };
-        return {
-          statusCode: 200,
-          headers: { ...headers, 'X-Cache': cached ? 'STALE' : 'MISS', 'X-Quota-Exceeded': '1', 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...fallback, quotaExceeded: true })
-        };
-      }
-
+      if (resp.status === 403) throw new Error('403 quota/plan restriction from GNews');
       if (!resp.ok) {
-        const txt = await resp.text();
-        return { statusCode: resp.status, headers, body: JSON.stringify({ error: 'Failed to fetch news', status: resp.status, message: txt }) };
+        const txt = await resp.text().catch(() => '');
+        throw new Error(`GNews ${resp.status} ${resp.statusText} ${txt}`.trim());
       }
+      return resp.json();
+    };
 
-      const json = await resp.json();
-      const batch = Array.isArray(json.articles) ? json.articles : [];
-      if (batch.length === 0) break;
+    // First page
+    const first = await fetchPage(1, Math.min(PER_PAGE_CAP, targetRaw));
+    const firstBatch = Array.isArray(first.articles) ? first.articles : [];
+    totalFromAPI = typeof first.totalArticles === 'number' ? first.totalArticles : undefined;
+    effectivePerPage = Math.max(0, firstBatch.length); // usually 25 on Essential, 10 on Free
 
+    for (const a of firstBatch) {
+      const key = a?.url || a?.source?.url || '';
+      if (key && !seen.has(key)) { seen.add(key); collected.push(a); }
+    }
+
+    // If nothing came back, bail early
+    if (collected.length === 0) {
+      const payloadEmpty = basePayload({
+        articles: [],
+        endpoint, q, lang, country, maxReq, category, expand, from, to,
+        bias, doBiasFilter, minReliability, balanced, clusterMode,
+        totalFromAPI, effectivePerPage,
+        planLimited: null
+      });
+      cache.set(cacheKey, { data: payloadEmpty, timestamp: Date.now() });
+      return {
+        statusCode: 200,
+        headers: { ...headers, 'X-Cache': 'MISS', 'X-Key-Suffix': maskKey(API_KEY), 'X-Requested': String(maxReq), 'X-Delivered': '0', 'X-Effective-PerPage': String(effectivePerPage) },
+        body: JSON.stringify(payloadEmpty)
+      };
+    }
+
+    // Continue paging until we have enough or run out
+    // Compute a conservative max page count using what we actually got on page 1
+    const perEff = Math.max(1, effectivePerPage);
+    const totalTarget = totalFromAPI ? Math.min(targetRaw, totalFromAPI) : targetRaw;
+    const pagesNeeded = Math.ceil(totalTarget / perEff);
+    const hardStopPages = Math.max(2, Math.min(10, pagesNeeded)); // safety
+
+    page = 2;
+    while (collected.length < targetRaw && page <= hardStopPages) {
+      const next = await fetchPage(page, Math.min(PER_PAGE_CAP, targetRaw - collected.length));
+      const batch = Array.isArray(next.articles) ? next.articles : [];
+      if (batch.length === 0) break; // no more data
       for (const a of batch) {
         const key = a?.url || a?.source?.url || '';
-        if (key && seen.has(key)) continue;
-        if (key) seen.add(key);
-        collected.push(a);
+        if (key && !seen.has(key)) { seen.add(key); collected.push(a); }
+        if (collected.length >= targetRaw) break;
       }
-
-      if (batch.length < perPage) break;
       page += 1;
     }
 
@@ -232,7 +265,7 @@ exports.handler = async (event) => {
       };
     });
 
-    // Time filter (server-side)
+    // Time filter
     if (from || to) {
       const fromT = from ? Date.parse(from) : Number.NEGATIVE_INFINITY;
       const toT   = to   ? Date.parse(to)   : Number.POSITIVE_INFINITY;
@@ -266,15 +299,10 @@ exports.handler = async (event) => {
       const perBucket = Math.ceil(maxReq / buckets.length);
       const picked = [];
       const used = new Set();
-
-      // Take up to perBucket from each bucket
       for (const b of buckets) {
         const list = articles.filter(a => a.bias === b && !used.has(a.url));
-        for (const a of list.slice(0, perBucket)) {
-          picked.push(a); used.add(a.url);
-        }
+        for (const a of list.slice(0, perBucket)) { picked.push(a); used.add(a.url); }
       }
-      // Fill remaining from any bias, newest first
       if (picked.length < maxReq) {
         const rest = articles.filter(a => !used.has(a.url))
           .sort((a, b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
@@ -283,32 +311,67 @@ exports.handler = async (event) => {
       articles = picked;
     }
 
-    // Final trim
+    // Final trim to UI request
     articles = articles.slice(0, maxReq);
 
-    const payload = {
-      totalArticles: articles.length,
+    // Detect if plan/page cap is limiting us (e.g., effectivePerPage < PER_PAGE_CAP)
+    const planLimited = effectivePerPage > 0 && effectivePerPage < PER_PAGE_CAP ? effectivePerPage : null;
+
+    const payload = basePayload({
       articles,
-      fetchedAt: new Date().toISOString(),
-      endpoint,
-      parameters: {
-        q, lang, country, max: maxReq, category, expand, from, to,
-        bias: doBiasFilter ? bias : (balanced ? 'balanced' : 'default'),
-        minReliability,
-        cluster: clusterMode || 'off'
-      }
-    };
+      endpoint, q, lang, country, maxReq, category, expand, from, to,
+      bias: doBiasFilter ? bias : (balanced ? 'balanced' : 'default'),
+      doBiasFilter, minReliability, balanced, clusterMode,
+      totalFromAPI, effectivePerPage,
+      planLimited
+    });
 
     cache.set(cacheKey, { data: payload, timestamp: Date.now() });
     if (cache.size > 100) cache.delete(cache.keys().next().value);
 
     return {
       statusCode: 200,
-      headers: { ...headers, 'X-Cache': 'MISS', 'Content-Type': 'application/json' },
+      headers: {
+        ...headers,
+        'X-Cache': 'MISS',
+        'X-Key-Suffix': maskKey(API_KEY),
+        'X-Requested': String(maxReq),
+        'X-Delivered': String(articles.length),
+        'X-Effective-PerPage': String(effectivePerPage || 0)
+      },
       body: JSON.stringify(payload)
     };
   } catch (err) {
-    console.error('Function error:', err);
-    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Internal server error', message: err.message, timestamp: new Date().toISOString() }) };
+    const body = JSON.stringify({ error: 'Internal server error', message: err.message, timestamp: new Date().toISOString() });
+    return { statusCode: 500, headers, body };
   }
 };
+
+// ---- helpers ----
+function maskKey(k) {
+  if (!k) return 'none';
+  return `...${String(k).slice(-4)}`;
+}
+
+function basePayload ({
+  articles, endpoint, q, lang, country, maxReq, category, expand, from, to,
+  bias, doBiasFilter, minReliability, balanced, clusterMode,
+  totalFromAPI, effectivePerPage, planLimited
+}) {
+  return {
+    totalArticles: articles.length,
+    articles,
+    fetchedAt: new Date().toISOString(),
+    endpoint,
+    parameters: {
+      q, lang, country, max: maxReq, category, expand, from, to,
+      bias, minReliability, cluster: clusterMode || 'off', balanced: !!balanced
+    },
+    debug: {
+      totalFromAPI: typeof totalFromAPI === 'number' ? totalFromAPI : null,
+      effectivePerPage: effectivePerPage ?? null,
+      planLimited
+    }
+  };
+}
+
