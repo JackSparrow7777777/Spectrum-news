@@ -25,7 +25,7 @@
       --medium-gray: #e0e0e0;
       --dark-gray: #333333;
       --text-color: #333333;
-      --border-radius: 8px;
+      --border-radius: 12px;
       --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     }
 
@@ -141,15 +141,19 @@
     .view-option.active { background: var(--primary-color); color: #fff; }
 
     /* News grid */
-    #news-container { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    #news-container { display: grid; grid-template-columns: 1fr; gap: 18px; } /* slightly wider rhythm */
     .cards-2 #news-container { grid-template-columns: repeat(2, 1fr); }
     .cards-3 #news-container { grid-template-columns: repeat(3, 1fr); }
 
     .article-card {
       background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow);
       overflow: hidden; transition: transform 0.18s ease, box-shadow 0.18s ease;
+      /* micro-perf: only render when near viewport */
+      content-visibility: auto;
+      contain-intrinsic-size: 600px;
     }
     .article-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
+    .article-card:focus-visible { outline: 3px solid var(--primary-color); outline-offset: 3px; }
 
     .article-source { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--medium-gray); }
     .source-logo { width: 36px; height: 36px; background: var(--light-gray); border-radius: 6px; display: grid; place-items: center; font-weight: 700; color: #666; }
@@ -157,13 +161,16 @@
     .source-name { font-weight: 600; font-size: 14px; }
     .source-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #777; font-size: 12px; margin-top: 2px; }
 
-    /* Reliability badge – 3 tiers */
+    /* Reliability badge – quieter */
     .reliability-badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
     .reliability--over    { background: #fff6b3; color: #7a6700; } /* >50 -> Yellow */
     .reliability--default { background: #e6f7e6; color: #1b7f3a; } /* 50  -> Green  */
     .reliability--under   { background: #efe6ff; color: #5b3aa3; } /* <50 -> Violet */
 
     .bias-badge { background: #f2f3f4; color: #444; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .source-meta .reliability-badge,
+    .source-meta .bias-badge { font-size: 11px; padding: 2px 6px; }
+
     .bias-badge.left{background:#e7f3fb;color:#2E4172}
     .bias-badge.lean-left{background:#eaf6ff;color:#2E86C1}
     .bias-badge.center{background:#f2f3f4;color:#7F8C8D}
@@ -171,93 +178,51 @@
     .bias-badge.right{background:#fde9e7;color:#E74C3C}
     .bias-badge.unknown{background:#eee;color:#666}
 
-/* ==== Uniform media box (unchanged default) ==== */
-.thumb-frame {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: #f2f2f2;
-  overflow: hidden;
-}
-.thumb-frame img.thumb {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;       /* default for 2-up / 3-up */
-  object-position: center;
-  -webkit-user-select: none;
-  user-select: none;
-}
+    /* ==== NEW: Uniform media box ==== */
+    .thumb-frame {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;     /* default for grid views */
+      background: #f2f2f2;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+    .thumb-frame img.thumb {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;        /* cover in grid views */
+      object-position: center;
+      -webkit-user-select: none;
+      user-select: none;
+    }
 
-/* LIST: full-bleed image, slightly shorter, no gaps */
-.cards-1 .article-card .thumb-frame{
-  width: 100%;
-  margin: 0;
-  aspect-ratio: 2 / 1;     /* shorter than 16:9 to reduce height */
-  background: transparent; /* no grey banding */
-  border-radius: 0;        /* let the card clip the corners */
-}
+    /* ==== LIST VIEW CUSTOMIZATIONS ==== */
+    /* 1) Center the smaller card and set ~75% width (capped) */
+    .cards-1 #news-container { justify-items: center; }
+    .cards-1 .article-card  { width: min(75%, 920px); }
 
-.cards-1 .article-card .thumb-frame img.thumb{
-  object-fit: cover !important;      /* fill the frame completely */
-  object-position: center 35%;       /* bias crop a bit upward (optional) */
-  background: transparent !important;
-}
+    /* 2) Image: full-bleed, slightly shorter aspect to reduce height, no gaps */
+    .cards-1 .article-card .thumb-frame{
+      width: 100%;
+      margin: 0;
+      aspect-ratio: 2 / 1;          /* a touch shorter than 16:9 */
+      border-radius: 12px;
+      overflow: hidden;
+      background: transparent;
+    }
+    .cards-1 .article-card .thumb-frame img.thumb{
+      object-fit: cover !important;  /* fill, no letterboxing */
+      object-position: center 35%;   /* bias crop upward a bit */
+      background: transparent !important;
+    }
 
-/* (Optional) keep it comfy on small screens */
-@media (max-width: 700px){
-  .cards-1 .article-card .thumb-frame{
-    aspect-ratio: 16 / 9;  /* a bit taller on phones */
-  }
-}
-
-
-/* Mobile: use full width so it doesn’t feel cramped */
-@media (max-width: 700px) {
-  .cards-1 .thumb-frame {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-  }
-}
-    /* List view: card = 92.5% width, centered */
-.cards-1 #news-container {
-  justify-items: center;              /* center grid items */
-}
-
-.cards-1 .article-card {
-  width: 92.5%;                         /* ~92.5% of the content column */
-  max-width: 980px;                   /* optional upper bound */
-}
-
-/* Keep image coherent & full-bleed inside the smaller card */
-.cards-1 .article-card .thumb-frame{
-  width: 100%;
-  margin: 0;
-  aspect-ratio: 2 / 1;                /* slightly shorter than 16:9 */
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.cards-1 .article-card .thumb-frame img.thumb{
-  object-fit: cover !important;       /* fill the frame, no gaps */
-  object-position: center 35%;        /* bias crop up a bit (tweak to taste) */
-}
-
-/* Mobile: use full width so it doesn't get cramped */
-@media (max-width: 900px){
-  .cards-1 #news-container { justify-items: stretch; }
-  .cards-1 .article-card { width: 100%; max-width: none; }
-  .cards-1 .article-card .thumb-frame { aspect-ratio: 16 / 9; }
-}
-
-
-
-
-    .article-content { padding: 14px; }
-    .article-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
-    .article-meta { display: flex; justify-content: space-between; gap: 6px; color: #666; font-size: 13px; margin-bottom: 10px; }
+    /* Card body tweaks */
+    .article-content { padding: 12px 14px; } /* slightly tighter */
+    .article-title   { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
+    .article-meta    { display: flex; justify-content: space-between; gap: 6px; color: #666; font-size: 13px; margin-bottom: 10px; }
     .article-description { color: #444; font-size: 14px; margin-bottom: 12px; }
     .article-actions { display: flex; justify-content: space-between; align-items: center; }
     .link-btn { color: var(--primary-color); font-weight: 600; padding: 8px 10px; border-radius: 6px; background: #f0f6ff; }
@@ -274,6 +239,9 @@
       main .container { flex-direction: column; }
       .sidebar { width: 100%; position: static; order: 2; }
       .content { order: 1; }
+      .cards-1 #news-container { justify-items: stretch; }
+      .cards-1 .article-card { width: 100%; }
+      .cards-1 .article-card .thumb-frame { aspect-ratio: 16 / 9; }
     }
     @media (max-width: 600px) {
       header .container { flex-direction: column; align-items: stretch; }
