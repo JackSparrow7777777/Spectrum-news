@@ -191,25 +191,32 @@
   user-select: none;
 }
 
-/* ==== List view: slightly smaller, still show full image (contain) ==== */
+/* ==== List view: smaller image, no white gaps ==== */
 .cards-1 .thumb-frame {
-  width: min(92%, 980px);  /* a touch narrower than the card, centered */
-  margin: 8px auto 0;
-  aspect-ratio: 18 / 9;    /* ~11% less tall than 16:9 */
+  /* a bit narrower than the card, centered */
+  width: clamp(640px, 88%, 960px);
+  margin: 10px auto 0;
+
+  /* keep a familiar wide frame but not huge */
+  aspect-ratio: 16 / 9;        /* stable layout, no CLS */
   border-radius: 10px;
-}
-.cards-1 .thumb-frame img.thumb {
-  object-fit: contain;     /* no crop in List */
-  background: #0000000a;   /* subtle letterbox */
+  overflow: hidden;            /* ensure clean edges */
 }
 
-/* Mobile: use full width and standard height so it doesn't feel cramped */
+.cards-1 .thumb-frame img.thumb {
+  object-fit: cover;           /* fill the box; no letterboxing */
+  object-position: center 35%; /* bias crop slightly upward; tweak if needed */
+  background: transparent;     /* no gray/white bars */
+}
+
+/* Mobile: use full width so it doesn’t feel cramped */
 @media (max-width: 700px) {
   .cards-1 .thumb-frame {
     width: 100%;
     aspect-ratio: 16 / 9;
   }
 }
+
 
 
     .article-content { padding: 14px; }
