@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -190,15 +191,12 @@
   user-select: none;
 }
 
-/* ==== List view: smaller image, no white gaps ==== */
+/* ==== List view: full-width image, no white gaps ==== */
 .cards-1 .thumb-frame {
-  /* a bit narrower than the card, centered */
-  width: clamp(640px, 88%, 960px);
-  margin: 10px auto 0;
-
-  /* keep a familiar wide frame but not huge */
+  width: 100%;
+  margin: 0;
   aspect-ratio: 16 / 9;        /* stable layout, no CLS */
-  border-radius: 10px;
+  border-radius: var(--border-radius);
   overflow: hidden;            /* ensure clean edges */
 }
 
@@ -215,6 +213,9 @@
     aspect-ratio: 16 / 9;
   }
 }
+
+
+
     .article-content { padding: 14px; }
     .article-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
     .article-meta { display: flex; justify-content: space-between; gap: 6px; color: #666; font-size: 13px; margin-bottom: 10px; }
@@ -248,13 +249,14 @@
     <div class="container">
       <div class="logo"><h1>Spectrum <span>News</span></h1></div>
 
-  <div class="search-bar">
-    <form id="search-form" class="search-form" autocomplete="off">
-      <input id="search-input" type="text" placeholder="Search news…" value="latest news" />
-      <button class="search-btn" type="submit">Search</button>
-    </form>
-  </div>
-</div>  </header>
+      <div class="search-bar">
+        <form id="search-form" class="search-form" autocomplete="off">
+          <input id="search-input" type="text" placeholder="Search news…" value="latest news" />
+          <button class="search-btn" type="submit">Search</button>
+        </form>
+      </div>
+    </div>
+  </header>
 
   <main>
     <div class="container">
@@ -263,130 +265,131 @@
         <section class="filter-section">
           <h2>Filters</h2>
 
-      <h3>Country</h3>
-      <select id="country-select" class="select">
-        <option value="us">United States</option>
-        <option value="gb">United Kingdom</option>
-        <option value="ca">Canada</option>
-        <option value="au">Australia</option>
-        <option value="de">Germany</option>
-        <option value="fr">France</option>
-        <option value="in">India</option>
-        <option value="jp">Japan</option>
-        <option value="kr">Korea</option>
-      </select>
+          <h3>Country</h3>
+          <select id="country-select" class="select">
+            <option value="us">United States</option>
+            <option value="gb">United Kingdom</option>
+            <option value="ca">Canada</option>
+            <option value="au">Australia</option>
+            <option value="de">Germany</option>
+            <option value="fr">France</option>
+            <option value="in">India</option>
+            <option value="jp">Japan</option>
+            <option value="kr">Korea</option>
+          </select>
 
-      <h3>Language</h3>
-      <select id="language-select" class="select">
-        <option value="en">English</option>
-        <option value="es">Spanish</option>
-        <option value="fr">French</option>
-        <option value="de">German</option>
-        <option value="it">Italian</option>
-        <option value="pt">Portuguese</option>
-        <option value="ko">Korean</option>
-        <option value="ja">Japanese</option>
-      </select>
+          <h3>Language</h3>
+          <select id="language-select" class="select">
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="pt">Portuguese</option>
+            <option value="ko">Korean</option>
+            <option value="ja">Japanese</option>
+          </select>
 
-      <h3>Articles</h3>
-      <select id="max-select" class="select">
-        <option value="10">10 articles</option>
-        <option value="25">25 articles</option>
-        <option value="50">50 articles</option>
-        <option value="100">100 articles</option>
-      </select>
-    </section>
+          <h3>Articles</h3>
+          <select id="max-select" class="select">
+            <option value="10">10 articles</option>
+            <option value="25">25 articles</option>
+            <option value="50">50 articles</option>
+            <option value="100">100 articles</option>
+          </select>
+        </section>
 
-    <!-- Bias + toggles -->
-    <section class="filter-section">
-      <h2>Bias</h2>
-      <div class="bias-filter" id="bias-filter" role="group" aria-label="Bias filter">
-        <div class="bias-option active" data-bias="default" aria-pressed="true">
-          <div class="bias-circle" style="background:#e0e0e0"></div><small>Default</small>
+        <!-- Bias + toggles -->
+        <section class="filter-section">
+          <h2>Bias</h2>
+          <div class="bias-filter" id="bias-filter" role="group" aria-label="Bias filter">
+            <div class="bias-option active" data-bias="default" aria-pressed="true">
+              <div class="bias-circle" style="background:#e0e0e0"></div><small>Default</small>
+            </div>
+            <div class="bias-option" data-bias="left" aria-pressed="false">
+              <div class="bias-circle left-bias"></div><small>Left</small>
+            </div>
+            <div class="bias-option" data-bias="lean-left" aria-pressed="false">
+              <div class="bias-circle center-left-bias"></div><small>CL</small>
+            </div>
+            <div class="bias-option" data-bias="center" aria-pressed="false">
+              <div class="bias-circle center-bias"></div><small>Center</small>
+            </div>
+            <div class="bias-option" data-bias="lean-right" aria-pressed="false">
+              <div class="bias-circle center-right-bias"></div><small>CR</small>
+            </div>
+            <div class="bias-option" data-bias="right" aria-pressed="false">
+              <div class="bias-circle right-bias"></div><small>Right</small>
+            </div>
+          </div>
+
+          <label class="toggle-row">
+            <input type="checkbox" id="balanced-toggle" />
+            <span>Balanced view (even mix)</span>
+          </label>
+        </section>
+
+        <section class="filter-section">
+          <h2>Reliability</h2>
+          <input id="reliability" class="slider" type="range" min="0" max="100" value="0" />
+          <div class="slider-labels"><span>Low</span><span>Medium</span><span>High</span></div>
+        </section>
+
+        <section class="filter-section">
+          <h2>Time Range</h2>
+          <select id="time-range" class="select">
+            <option value="any">Any time</option>
+            <option value="24h">Past 24 hours</option>
+            <option value="7d">Past 7 days</option>
+            <option value="30d">Past 30 days</option>
+          </select>
+        </section>
+
+        <section class="filter-section">
+          <h2>Noise Control</h2>
+          <label class="toggle-row">
+            <input type="checkbox" id="cluster-toggle" checked />
+            <span>Cluster similar stories</span>
+          </label>
+        </section>
+
+        <section class="filter-section">
+          <h2>Topics</h2>
+          <ul class="topics-list" id="topics">
+            <li class="active" data-category="">All</li>
+            <li data-category="general">General</li>
+            <li data-category="world">World</li>
+            <li data-category="business">Business</li>
+            <li data-category="technology">Technology</li>
+            <li data-category="entertainment">Entertainment</li>
+            <li data-category="sports">Sports</li>
+            <li data-category="science">Science</li>
+            <li data-category="health">Health</li>
+          </ul>
+        </section>
+      </aside>
+
+      <!-- Content -->
+      <section class="content">
+        <div class="status-bar" id="status-bar">
+          <div class="pill"><span class="dot" aria-hidden="true"></span><span id="live-label">Live</span></div>
+          <div id="status-text">Loading…</div>
+          <div id="cache-text" style="opacity:0.8;"></div>
         </div>
-        <div class="bias-option" data-bias="left" aria-pressed="false">
-          <div class="bias-circle left-bias"></div><small>Left</small>
+
+        <div class="view-options" role="tablist" aria-label="View options">
+          <button class="view-option" data-view="1" role="tab" aria-selected="false">List</button>
+          <button class="view-option active" data-view="2" role="tab" aria-selected="true">2-up</button>
+          <button class="view-option" data-view="3" role="tab" aria-selected="false">3-up</button>
         </div>
-        <div class="bias-option" data-bias="lean-left" aria-pressed="false">
-          <div class="bias-circle center-left-bias"></div><small>CL</small>
-        </div>
-        <div class="bias-option" data-bias="center" aria-pressed="false">
-          <div class="bias-circle center-bias"></div><small>Center</small>
-        </div>
-        <div class="bias-option" data-bias="lean-right" aria-pressed="false">
-          <div class="bias-circle center-right-bias"></div><small>CR</small>
-        </div>
-        <div class="bias-option" data-bias="right" aria-pressed="false">
-          <div class="bias-circle right-bias"></div><small>Right</small>
-        </div>
-      </div>
 
-      <label class="toggle-row">
-        <input type="checkbox" id="balanced-toggle" />
-        <span>Balanced view (even mix)</span>
-      </label>
-    </section>
+        <div id="error" class="error" style="display:none;"></div>
+        <div id="loading" class="loading" style="display:none;">Loading latest news…</div>
 
-    <section class="filter-section">
-      <h2>Reliability</h2>
-      <input id="reliability" class="slider" type="range" min="0" max="100" value="0" />
-      <div class="slider-labels"><span>Low</span><span>Medium</span><span>High</span></div>
-    </section>
-
-    <section class="filter-section">
-      <h2>Time Range</h2>
-      <select id="time-range" class="select">
-        <option value="any">Any time</option>
-        <option value="24h">Past 24 hours</option>
-        <option value="7d">Past 7 days</option>
-        <option value="30d">Past 30 days</option>
-      </select>
-    </section>
-
-    <section class="filter-section">
-      <h2>Noise Control</h2>
-      <label class="toggle-row">
-        <input type="checkbox" id="cluster-toggle" checked />
-        <span>Cluster similar stories</span>
-      </label>
-    </section>
-
-    <section class="filter-section">
-      <h2>Topics</h2>
-      <ul class="topics-list" id="topics">
-        <li class="active" data-category="">All</li>
-        <li data-category="general">General</li>
-        <li data-category="world">World</li>
-        <li data-category="business">Business</li>
-        <li data-category="technology">Technology</li>
-        <li data-category="entertainment">Entertainment</li>
-        <li data-category="sports">Sports</li>
-        <li data-category="science">Science</li>
-        <li data-category="health">Health</li>
-      </ul>
-    </section>
-  </aside>
-
-  <!-- Content -->
-  <section class="content">
-    <div class="status-bar" id="status-bar">
-      <div class="pill"><span class="dot" aria-hidden="true"></span><span id="live-label">Live</span></div>
-      <div id="status-text">Loading…</div>
-      <div id="cache-text" style="opacity:0.8;"></div>
+        <div id="news-container" aria-live="polite"></div>
+      </section>
     </div>
-
-    <div class="view-options" role="tablist" aria-label="View options">
-      <button class="view-option" data-view="1" role="tab" aria-selected="false">List</button>
-      <button class="view-option active" data-view="2" role="tab" aria-selected="true">2-up</button>
-      <button class="view-option" data-view="3" role="tab" aria-selected="false">3-up</button>
-    </div>
-
-    <div id="error" class="error" style="display:none;"></div>
-    <div id="loading" class="loading" style="display:none;">Loading latest news…</div>
-
-    <div id="news-container" aria-live="polite"></div>
-  </section>
-</div>  </main>
+  </main>
 
   <footer>
     <div class="container">
@@ -622,14 +625,10 @@
         return d.toLocaleDateString();
       }
       initial(name) { const c = (name || '').trim()[0]; return (c || '?').toUpperCase(); }
-      escape(str) { return String(str || '').replace(/[&<>"']/g, s => ({'&':'&','<':'<','>':'>','"':'"',"'":'''}[s])); }
+      escape(str) { return String(str || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
     }
 
     document.addEventListener('DOMContentLoaded', () => new NewsApp());
   </script>
 </body>
 </html>
-
-
-
-
