@@ -191,23 +191,28 @@
   user-select: none;
 }
 
-/* ==== List view: smaller image, no white gaps ==== */
-.cards-1 .thumb-frame {
-  /* a bit narrower than the card, centered */
-  width: clamp(640px, 88%, 960px);
-  margin: 10px auto 0;
-
-  /* keep a familiar wide frame but not huge */
-  aspect-ratio: 16 / 9;        /* stable layout, no CLS */
-  border-radius: 10px;
-  overflow: hidden;            /* ensure clean edges */
+/* LIST: full-bleed image, slightly shorter, no gaps */
+.cards-1 .article-card .thumb-frame{
+  width: 100%;
+  margin: 0;
+  aspect-ratio: 2 / 1;     /* shorter than 16:9 to reduce height */
+  background: transparent; /* no grey banding */
+  border-radius: 0;        /* let the card clip the corners */
 }
 
-.cards-1 .thumb-frame img.thumb {
-  object-fit: cover;           /* fill the box; no letterboxing */
-  object-position: center 35%; /* bias crop slightly upward; tweak if needed */
-  background: transparent;     /* no gray/white bars */
+.cards-1 .article-card .thumb-frame img.thumb{
+  object-fit: cover !important;      /* fill the frame completely */
+  object-position: center 35%;       /* bias crop a bit upward (optional) */
+  background: transparent !important;
 }
+
+/* (Optional) keep it comfy on small screens */
+@media (max-width: 700px){
+  .cards-1 .article-card .thumb-frame{
+    aspect-ratio: 16 / 9;  /* a bit taller on phones */
+  }
+}
+
 
 /* Mobile: use full width so it doesn’t feel cramped */
 @media (max-width: 700px) {
