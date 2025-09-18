@@ -1,8 +1,8 @@
 // netlify/functions/news.js
-// GNews API Serverless Function for Netlify (parallel pagination + short CDN cache)
+// GNews API Serverless Function for Netlify (parallel pagination + plan-cap detection)
 
 const cache = new Map();
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (in-function memory)
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 const API_BASE = 'https://gnews.io/api/v4';
 
 // ---- AllSides-style buckets (seed list — expand as you like) ----
@@ -105,8 +105,6 @@ exports.handler = async (event) => {
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Content-Type': 'application/json; charset=utf-8',
-    // Short CDN cache at Netlify edge to speed repeats
-    'Netlify-CDN-Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300'
   };
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
@@ -251,6 +249,7 @@ exports.handler = async (event) => {
     const remainingPages = [];
     for (let p = 2; p <= pagesNeeded; p++) remainingPages.push(p);
 
+    // Respect Essential RPS: after the first request, 3 parallel is safe for 100 target
     const perPageAsk = Math.min(PER_PAGE_CAP, targetRaw);
 
     const results = await Promise.all(
@@ -395,5 +394,6 @@ function basePayload ({
     }
   };
 }
+
 
 
