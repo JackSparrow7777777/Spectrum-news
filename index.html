@@ -8,54 +8,240 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"/>
 
   <style>
-    /* (styles unchanged from your latest version; abbreviated for brevity) */
-    :root { --primary-color:#3478F6; --secondary-color:#FF5733; --left-color:#2E4172; --center-left-color:#87CEEB; --center-color:#7F8C8D; --center-right-color:#F39C12; --right-color:#E74C3C; --neutral-color:#27AE60; --light-gray:#f5f5f5; --medium-gray:#e0e0e0; --dark-gray:#333; --text-color:#333; --border-radius:12px; --box-shadow:0 2px 8px rgba(0,0,0,.06); }
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Roboto',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;line-height:1.6;color:var(--text-color);background:#f9f9f9}
-    .container{max-width:1200px;margin:0 auto;padding:0 15px}
-    a{text-decoration:none;color:inherit} ul{list-style:none} button{cursor:pointer;border:none;background:none;font-family:inherit}
-    header{background:#fff;box-shadow:var(--box-shadow);padding:14px 0;position:sticky;top:0;z-index:100}
-    header .container{display:flex;gap:16px;justify-content:space-between;align-items:center}
-    .logo h1{font-size:22px;font-weight:700;color:var(--primary-color);letter-spacing:.2px}.logo span{color:#E74C3C;font-weight:500}
-    .search-bar{flex:1}.search-form{display:flex;gap:10px}
-    .search-bar input{width:100%;padding:10px 14px;border:1px solid var(--medium-gray);border-radius:20px;font-size:14px;background:#fff}
-    .search-btn{background:var(--primary-color);color:#fff;padding:10px 16px;border-radius:20px;font-weight:500}
-    main{padding:18px 0} main .container{display:flex;gap:20px}
-    .sidebar{width:260px;background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:18px;position:sticky;top:78px;height:fit-content}
-    .filter-section{margin-bottom:22px}.filter-section h2{font-size:18px;margin-bottom:12px;color:var(--dark-gray)}.filter-section h3{font-size:14px;margin:12px 0 8px;color:var(--dark-gray)}
-    .select{width:100%;padding:10px 12px;border:1px solid var(--medium-gray);border-radius:var(--border-radius);background:#fff;font-size:14px}
-    .toggle-row{display:flex;align-items:center;gap:10px;font-size:14px;margin-top:8px}.toggle-row input{transform:translateY(1px)}
-    .bias-filter{display:flex;justify-content:space-between;align-items:center;gap:8px}.bias-option{display:flex;flex-direction:column;align-items:center;cursor:pointer}.bias-circle{width:22px;height:22px;border-radius:50%;margin-bottom:6px;transition:transform .2s}.bias-option:hover .bias-circle{transform:scale(1.15)}.bias-option.active .bias-circle{outline:2px solid #000;outline-offset:2px}
-    .left-bias{background:var(--left-color)}.center-left-bias{background:var(--center-left-color)}.center-bias{background:var(--center-color)}.center-right-bias{background:var(--center-right-color)}.right-bias{background:var(--right-color)}
-    .slider{width:100%;height:5px;background:linear-gradient(to right,#7e57c2,#27AE60,#ffeb3b);outline:none;-webkit-appearance:none;border-radius:5px}
-    .slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:#fff;border:2px solid var(--primary-color);border-radius:50%;cursor:pointer}
-    .slider-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:#666}
-    .topics-list li{padding:8px 0;cursor:pointer;color:#555;transition:color .15s;display:flex;align-items:center;justify-content:space-between}
-    .topics-list li:hover{color:var(--primary-color)}.topics-list li.active{color:var(--primary-color);font-weight:500}
-    .content{flex:1;min-width:0}
-    .status-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:10px 14px;margin-bottom:14px;font-size:13px;color:#666}
-    .pill{display:inline-flex;align-items:center;gap:8px;background:var(--light-gray);border-radius:999px;padding:6px 10px;font-weight:500}.dot{width:8px;height:8px;border-radius:50%;background:#3478F6;animation:pulse 1.8s ease-in-out infinite}
-    @keyframes pulse{0%{transform:scale(1);opacity:.8}50%{transform:scale(1.25);opacity:1}100%{transform:scale(1);opacity:.8}}
-    @media (prefers-reduced-motion: reduce){.dot{animation:none}}
-    .view-options{display:flex;background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);overflow:hidden;margin-bottom:16px}.view-option{padding:10px 16px;font-weight:500;transition:background-color .15s;flex:0 0 auto}.view-option:hover{background:var(--light-gray)}.view-option.active{background:var(--primary-color);color:#fff}
-    #news-container{display:grid;grid-template-columns:1fr;gap:18px}.cards-2 #news-container{grid-template-columns:repeat(2,1fr)}.cards-3 #news-container{grid-template-columns:repeat(3,1fr)}
-    .article-card{background:#fff;border-radius:12px;box-shadow:var(--box-shadow);overflow:hidden;transition:transform .18s ease,box-shadow .18s ease;content-visibility:auto;contain-intrinsic-size:600px}
-    .article-card:hover{transform:translateY(-4px);box-shadow:0 8px 22px rgba(0,0,0,.08)}.article-card:focus-visible{outline:3px solid var(--primary-color);outline-offset:3px}
-    .article-source{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--medium-gray)}.source-logo{width:36px;height:36px;background:#f5f5f5;border-radius:6px;display:grid;place-items:center;font-weight:700;color:#666}
-    .source-info{flex:1;min-width:0}.source-name{font-weight:600;font-size:14px}.source-meta{display:flex;gap:8px;flex-wrap:wrap;color:#777;font-size:12px;margin-top:2px}
-    .reliability-badge{padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}.reliability--over{background:#fff6b3;color:#7a6700}.reliability--default{background:#e6f7e6;color:#1b7f3a}.reliability--under{background:#efe6ff;color:#5b3aa3}
-    .bias-badge{background:#f2f3f4;color:#444;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}.source-meta .reliability-badge,.source-meta .bias-badge{font-size:11px;padding:2px 6px}
-    .thumb-frame{position:relative;width:100%;aspect-ratio:16/9;background:#f2f2f2;overflow:hidden;border-radius:12px}
-    .thumb-frame img.thumb{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;object-position:center;-webkit-user-select:none;user-select:none}
-    .cards-1 #news-container{justify-items:center}.cards-1 .article-card{width:min(75%,920px)}
-    .cards-1 .article-card .thumb-frame{width:100%;margin:0;aspect-ratio:2/1;border-radius:12px;overflow:hidden;background:transparent}
-    .cards-1 .article-card .thumb-frame img.thumb{object-fit:cover!important;object-position:center 35%;background:transparent!important}
-    .article-content{padding:12px 14px}.article-title{font-size:18px;font-weight:600;margin-bottom:8px;color:#222;line-height:1.35}.article-meta{display:flex;justify-content:space-between;gap:6px;color:#666;font-size:13px;margin-bottom:10px}.article-description{color:#444;font-size:14px;margin-bottom:12px}.article-actions{display:flex;justify-content:space-between;align-items:center}.link-btn{color:var(--primary-color);font-weight:600;padding:8px 10px;border-radius:6px;background:#f0f6ff}
-    .loading{text-align:center;padding:28px;color:#666}.error{background:#fee;color:#b40000;padding:12px 14px;border-radius:12px;border-left:4px solid #b40000;margin-bottom:16px}
-    footer{background:#333;color:#fff;padding:20px 0;margin-top:28px}footer .container{display:flex;justify-content:space-between;align-items:center;font-size:13px;opacity:.9}
-    @media (max-width:1024px){.cards-3 #news-container{grid-template-columns:repeat(2,1fr)}}
-    @media (max-width:900px){main .container{flex-direction:column}.sidebar{width:100%;position:static;order:2}.content{order:1}.cards-1 #news-container{justify-items:stretch}.cards-1 .article-card{width:100%}.cards-1 .article-card .thumb-frame{aspect-ratio:16/9}}
-    @media (max-width:600px){header .container{flex-direction:column;align-items:stretch}.search-form{width:100%}.cards-2 #news-container,.cards-3 #news-container{grid-template-columns:1fr}}
+    /* ====== CLEAN WHITE THEME ====== */
+    :root {
+      --primary-color: #3478F6;
+      --secondary-color: #FF5733;
+
+      /* LEFT/RIGHT palette (US/KR) */
+      --left-color: #2E4172;
+      --center-left-color: #87CEEB;
+      --center-color: #7F8C8D;
+      --center-right-color: #F39C12;
+      --right-color: #E74C3C;
+
+      --neutral-color: #27AE60;
+      --light-gray: #f5f5f5;
+      --medium-gray: #e0e0e0;
+      --dark-gray: #333333;
+      --text-color: #333333;
+      --border-radius: 12px;
+      --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      color: var(--text-color);
+      background-color: #f9f9f9;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 15px; }
+
+    a { text-decoration: none; color: inherit; }
+    ul { list-style: none; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+
+    /* Header */
+    header {
+      background-color: #fff;
+      box-shadow: var(--box-shadow);
+      padding: 14px 0;
+      position: sticky; top: 0; z-index: 100;
+    }
+    header .container { display: flex; gap: 16px; justify-content: space-between; align-items: center; }
+
+    .logo h1 { font-size: 22px; font-weight: 700; color: var(--primary-color); letter-spacing: 0.2px; }
+    .logo span { color: #E74C3C; font-weight: 500; }
+
+    .search-bar { flex: 1; }
+    .search-form { display: flex; gap: 10px; }
+    .search-bar input {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--medium-gray);
+      border-radius: 20px; font-size: 14px; background: #fff;
+    }
+    .search-btn { background: var(--primary-color); color: #fff; padding: 10px 16px; border-radius: 20px; font-weight: 500; }
+
+    /* Main */
+    main { padding: 18px 0; }
+    main .container { display: flex; gap: 20px; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px; background: #fff; border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow); padding: 18px; position: sticky; top: 78px; height: fit-content;
+    }
+
+    .filter-section { margin-bottom: 22px; }
+    .filter-section h2 { font-size: 18px; margin-bottom: 12px; color: var(--dark-gray); }
+    .filter-section h3 { font-size: 14px; margin: 12px 0 8px; color: var(--dark-gray); }
+
+    .select {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--medium-gray);
+      border-radius: var(--border-radius); background: #fff; font-size: 14px;
+    }
+
+    .toggle-row { display: flex; align-items: center; gap: 10px; font-size: 14px; margin-top: 8px; }
+    .toggle-row input { transform: translateY(1px); }
+
+    /* Bias chips */
+    .bias-filter { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .bias-option { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+    .bias-circle { width: 22px; height: 22px; border-radius: 50%; margin-bottom: 6px; transition: transform 0.2s; }
+    .bias-option:hover .bias-circle { transform: scale(1.15); }
+    .bias-option.active .bias-circle { outline: 2px solid #000; outline-offset: 2px; }
+    .left-bias{background: var(--left-color);} .center-left-bias{background: var(--center-left-color);}
+    .center-bias{background: var(--center-color);} .center-right-bias{background: var(--center-right-color);}
+    .right-bias{background: var(--right-color);}
+
+    /* Reliability slider (Violet → Green → Yellow) */
+    .slider {
+      width: 100%;
+      height: 5px;
+      background: linear-gradient(to right, #7e57c2, #27AE60, #ffeb3b);
+      outline: none;
+      -webkit-appearance: none;
+      border-radius: 5px;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      background: #fff; border: 2px solid var(--primary-color);
+      border-radius: 50%; cursor: pointer;
+    }
+    .slider-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #666; }
+
+    /* Topics */
+    .topics-list li {
+      padding: 8px 0; cursor: pointer; color: #555; transition: color 0.15s;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topics-list li:hover { color: var(--primary-color); }
+    .topics-list li.active { color: var(--primary-color); font-weight: 500; }
+
+    /* Content area */
+    .content { flex: 1; min-width: 0; }
+
+    /* Status bar */
+    .status-bar {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+      background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow);
+      padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #666;
+    }
+    .pill { display: inline-flex; align-items: center; gap: 8px; background: var(--light-gray); border-radius: 999px; padding: 6px 10px; font-weight: 500; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #3478F6; animation: pulse 1.8s ease-in-out infinite; }
+    @keyframes pulse { 0%{transform:scale(1);opacity:.8} 50%{transform:scale(1.25);opacity:1} 100%{transform:scale(1);opacity:.8} }
+    @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+
+    .view-options { display: flex; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); overflow: hidden; margin-bottom: 16px; }
+    .view-option { padding: 10px 16px; font-weight: 500; transition: background-color 0.15s; flex: 0 0 auto; }
+    .view-option:hover { background: var(--light-gray); }
+    .view-option.active { background: var(--primary-color); color: #fff; }
+
+    /* News grid */
+    #news-container { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    .cards-2 #news-container { grid-template-columns: repeat(2, 1fr); }
+    .cards-3 #news-container { grid-template-columns: repeat(3, 1fr); }
+
+    .article-card {
+      background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow);
+      overflow: hidden; transition: transform 0.18s ease, box-shadow 0.18s ease;
+      content-visibility: auto; contain-intrinsic-size: 600px;
+    }
+    .article-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
+    .article-card:focus-visible { outline: 3px solid var(--primary-color); outline-offset: 3px; }
+
+    .article-source { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--medium-gray); }
+    .source-logo { width: 36px; height: 36px; background: var(--light-gray); border-radius: 6px; display: grid; place-items: center; font-weight: 700; color: #666; }
+    .source-info { flex: 1; min-width: 0; }
+    .source-name { font-weight: 600; font-size: 14px; }
+    .source-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #777; font-size: 12px; margin-top: 2px; }
+
+    .reliability-badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .reliability--over    { background: #fff6b3; color: #7a6700; }
+    .reliability--default { background: #e6f7e6; color: #1b7f3a; }
+    .reliability--under   { background: #efe6ff; color: #5b3aa3; }
+
+    .bias-badge { background: #f2f3f4; color: #444; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .source-meta .reliability-badge,
+    .source-meta .bias-badge { font-size: 11px; padding: 2px 6px; }
+
+    .bias-badge.left{background:#e7f3fb;color:#2E4172}
+    .bias-badge.lean-left{background:#eaf6ff;color:#2E86C1}
+    .bias-badge.center{background:#f2f3f4;color:#7F8C8D}
+    .bias-badge.lean-right{background:#fef5e7;color:#F39C12}
+    .bias-badge.right{background:#fde9e7;color:#E74C3C}
+    .bias-badge.unknown{background:#eee;color:#666}
+
+    /* ==== Uniform media box ==== */
+    .thumb-frame {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;     /* default for grid views */
+      background: #f2f2f2;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+    .thumb-frame img.thumb {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;        /* cover in grid views */
+      object-position: center;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* ==== LIST VIEW CUSTOMIZATIONS ==== */
+    .cards-1 #news-container { justify-items: center; }
+    .cards-1 .article-card  { width: min(92%, 920px); }
+
+    .cards-1 .article-card .thumb-frame{
+      width: 100%;
+      margin: 0;
+      aspect-ratio: 2 / 1;          /* slightly shorter than 16:9 */
+      border-radius: 12px;
+      overflow: hidden;
+      background: transparent;
+    }
+    .cards-1 .article-card .thumb-frame img.thumb{
+      object-fit: cover !important;  /* fill, no letterboxing */
+      object-position: center 35%;   /* bias crop upward a bit */
+      background: transparent !important;
+    }
+
+    .article-content { padding: 12px 14px; }
+    .article-title   { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
+    .article-meta    { display: flex; justify-content: space-between; gap: 6px; color: #666; font-size: 13px; margin-bottom: 10px; }
+    .article-description { color: #444; font-size: 14px; margin-bottom: 12px; }
+    .article-actions { display: flex; justify-content: space-between; align-items: center; }
+    .link-btn { color: var(--primary-color); font-weight: 600; padding: 8px 10px; border-radius: 6px; background: #f0f6ff; }
+
+    .loading { text-align: center; padding: 28px; color: #666; }
+    .error { background: #fee; color: #b40000; padding: 12px 14px; border-radius: var(--border-radius); border-left: 4px solid #b40000; margin-bottom: 16px; }
+
+    footer { background: var(--dark-gray); color: #fff; padding: 20px 0; margin-top: 28px; }
+    footer .container { display: flex; justify-content: space-between; align-items: center; font-size: 13px; opacity: 0.9; }
+
+    /* Responsive */
+    @media (max-width: 1024px) { .cards-3 #news-container { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 900px) {
+      main .container { flex-direction: column; }
+      .sidebar { width: 100%; position: static; order: 2; }
+      .content { order: 1; }
+      .cards-1 #news-container { justify-items: stretch; }
+      .cards-1 .article-card { width: 100%; }
+      .cards-1 .article-card .thumb-frame { aspect-ratio: 16 / 9; }
+    }
+    @media (max-width: 600px) {
+      header .container { flex-direction: column; align-items: stretch; }
+      .search-form { width: 100%; }
+      .cards-2 #news-container, .cards-3 #news-container { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 
@@ -63,6 +249,7 @@
   <header>
     <div class="container">
       <div class="logo"><h1>Spectrum <span>News</span></h1></div>
+
       <div class="search-bar">
         <form id="search-form" class="search-form" autocomplete="off">
           <input id="search-input" type="text" placeholder="Search news…" value="latest news" />
@@ -226,19 +413,31 @@
         this.loadNews();
       }
 
-      debounce(fn, delay = 400) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), delay); }; }
+      debounce(fn, delay = 400) {
+        let t;
+        return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), delay); };
+      }
 
       bindUI() {
         document.getElementById('year').textContent = new Date().getFullYear();
-        document.getElementById('search-form').addEventListener('submit', (e) => { e.preventDefault(); this.loadNews(); });
 
+        document.getElementById('search-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          this.loadNews();
+        });
+
+        // Basic selects (debounced)
         ['country-select','language-select','max-select','time-range']
           .forEach(id => document.getElementById(id).addEventListener('change', () => this.debouncedLoadNews()));
 
+        // Reliability slider on change (not every pixel)
         document.getElementById('reliability').addEventListener('change', () => this.debouncedLoadNews());
+
+        // Balanced + Cluster toggles
         document.getElementById('balanced-toggle').addEventListener('change', () => this.debouncedLoadNews());
         document.getElementById('cluster-toggle').addEventListener('change', () => this.debouncedLoadNews());
 
+        // Topics
         document.querySelectorAll('#topics li').forEach(li => {
           li.addEventListener('click', () => {
             document.querySelectorAll('#topics li').forEach(x => x.classList.remove('active'));
@@ -248,15 +447,19 @@
           });
         });
 
+        // Bias buttons
         document.querySelectorAll('#bias-filter .bias-option').forEach(opt => {
           opt.addEventListener('click', () => {
-            document.querySelectorAll('#bias-filter .bias-option').forEach(x => { x.classList.remove('active'); x.setAttribute('aria-pressed','false'); });
+            document.querySelectorAll('#bias-filter .bias-option').forEach(x => {
+              x.classList.remove('active'); x.setAttribute('aria-pressed','false');
+            });
             opt.classList.add('active'); opt.setAttribute('aria-pressed','true');
             this.currentBias = opt.dataset.bias || 'default';
             this.debouncedLoadNews();
           });
         });
 
+        // View options
         const viewBtns = document.querySelectorAll('.view-option');
         viewBtns.forEach(btn => {
           btn.addEventListener('click', () => {
@@ -271,35 +474,6 @@
 
       startAutoRefresh() { setInterval(() => this.loadNews(), this.autoRefreshMs); }
 
-      buildParams({ max, expand }) {
-        const q = (document.getElementById('search-input').value || 'latest news').trim();
-        const country = document.getElementById('country-select').value;
-        const lang = document.getElementById('language-select').value;
-
-        const params = new URLSearchParams({ q, country, lang, max: String(max), expand });
-
-        if (this.currentCategory) params.set('category', this.currentCategory);
-        if (this.currentBias && this.currentBias !== 'default') params.set('bias', this.currentBias);
-
-        const tr = document.getElementById('time-range').value;
-        if (tr !== 'any') {
-          let ms = 0;
-          if (tr === '24h') ms = 24*60*60*1000;
-          if (tr === '7d')  ms = 7*24*60*60*1000;
-          if (tr === '30d') ms = 30*24*60*60*1000;
-          params.set('from', new Date(Date.now() - ms).toISOString());
-          params.set('to', new Date().toISOString());
-        }
-
-        const minReliability = parseInt(document.getElementById('reliability').value, 10) || 0;
-        if (minReliability > 0) params.set('minReliability', String(minReliability));
-
-        if (document.getElementById('balanced-toggle').checked) params.set('balanced','1');
-        if (document.getElementById('cluster-toggle').checked) params.set('cluster','title');
-
-        return params;
-      }
-
       async loadNews() {
         const loadingEl = document.getElementById('loading');
         const errorEl = document.getElementById('error');
@@ -312,37 +486,49 @@
         container.innerHTML = '';
 
         try {
-          const selectedMax = parseInt(document.getElementById('max-select').value, 10) || 25;
-          const initialMax = Math.min(selectedMax, 25); // fast first paint
-          const initialParams = this.buildParams({ max: initialMax, expand: 'summary' });
+          const q = (document.getElementById('search-input').value || 'latest news').trim();
+          const country = document.getElementById('country-select').value;
+          const lang = document.getElementById('language-select').value;
+          const max = document.getElementById('max-select').value;
 
-          // 1) FAST fetch (25, summary)
-          const res1 = await fetch(`${this.apiEndpoint}?${initialParams.toString()}`);
-          if (!res1.ok) throw new Error(`HTTP ${res1.status} ${res1.statusText}`);
-          const data1 = await res1.json();
-          this.renderArticles(data1.articles || []);
+          const params = new URLSearchParams({ q, country, lang, max, expand: 'content' });
+          if (this.currentCategory) params.set('category', this.currentCategory);
+          if (this.currentBias && this.currentBias !== 'default') params.set('bias', this.currentBias);
 
-          const cached1 = res1.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
-          statusText.textContent = `Loaded ${data1.articles?.length || 0} articles • (quick view)`;
-          cacheText.textContent = `Response: ${cached1}`;
+          // Time range (server will filter; GNews never sees from/to)
+          const tr = document.getElementById('time-range').value;
+          if (tr !== 'any') {
+            let ms = 0;
+            if (tr === '24h') ms = 24*60*60*1000;
+            if (tr === '7d')  ms = 7*24*60*60*1000;
+            if (tr === '30d') ms = 30*24*60*60*1000;
+            params.set('from', new Date(Date.now() - ms).toISOString());
+            params.set('to', new Date().toISOString());
+          }
 
-          // 2) UPGRADE fetch (full size, content) if user asked >25
-          if (selectedMax > initialMax) {
-            const upgradeParams = this.buildParams({ max: selectedMax, expand: 'content' });
-            // let the UI breathe a tick (yields to rendering)
-            await new Promise(r => setTimeout(r, 0));
-            const res2 = await fetch(`${this.apiEndpoint}?${upgradeParams.toString()}`);
-            if (res2.ok) {
-              const data2 = await res2.json();
-              if ((data2.articles?.length || 0) > (data1.articles?.length || 0)) {
-                const y = window.scrollY; // preserve scroll
-                this.renderArticles(data2.articles || []);
-                window.scrollTo({ top: y });
-                const cached2 = res2.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
-                statusText.textContent = `Loaded ${data2.articles?.length || 0} articles • upgraded`;
-                cacheText.textContent = `Response: ${cached2}`;
-              }
-            }
+          // Reliability floor
+          const minReliability = parseInt(document.getElementById('reliability').value, 10) || 0;
+          if (minReliability > 0) params.set('minReliability', String(minReliability));
+
+          // Balanced + cluster toggles
+          if (document.getElementById('balanced-toggle').checked) params.set('balanced','1');
+          if (document.getElementById('cluster-toggle').checked) params.set('cluster','title');
+
+          const res = await fetch(`${this.apiEndpoint}?${params.toString()}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+
+          this.renderArticles(data.articles || []);
+
+          if (data.quotaExceeded) {
+            statusText.textContent = `Showing cached results — GNews daily quota reached`;
+            cacheText.textContent = `Response: quota (cached)`;
+          } else {
+            const cached = res.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
+            statusText.textContent = `Loaded ${(data.articles || []).length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
+            cacheText.textContent = `Response: ${cached}`;
           }
         } catch (err) {
           errorEl.textContent = `Failed to load news: ${err.message}`;
@@ -361,7 +547,7 @@
 
         el.innerHTML = articles.map(a => this.cardHTML(a)).join('');
 
-        // Prioritize the first hero image for perceived speed
+        // NEW: prioritize the first image for perceived speed
         const firstImg = el.querySelector('.thumb');
         if (firstImg) { firstImg.loading = 'eager'; firstImg.setAttribute('fetchpriority', 'high'); }
 
@@ -416,7 +602,6 @@
               <div class="thumb-frame">
                 <img class="thumb" src="${this.escape(img)}" alt=""
                      loading="lazy" decoding="async"
-                     sizes="(max-width:900px) 100vw, (min-width:900px) 75vw"
                      onerror="this.closest('.thumb-frame').style.display='none'">
               </div>
             ` : ''}
@@ -453,6 +638,5 @@
   </script>
 </body>
 </html>
-
 
 
