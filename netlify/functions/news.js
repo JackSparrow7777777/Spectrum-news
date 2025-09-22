@@ -1,4 +1,5 @@
-// netlify/functions/news.js
+'use strict';
+
 // GNews API Serverless Function for Netlify (parallel pagination + plan-cap detection)
 
 const cache = new Map();
@@ -9,18 +10,19 @@ const API_BASE = 'https://gnews.io/api/v4';
 const BIAS_BUCKETS = {
   left: [
     'alternet.org','democracynow.org','theguardian.com','huffpost.com','theintercept.com',
-    'jacobin.com','motherjones.com','msnbc.com','thenation.com','newyorker.com', 'theatlantic.com'
-    'thedailybeast.com','slate.com','vox.com','salon.com', 'bostonglobe.com', 'rollingstone.com'
+    'jacobin.com','motherjones.com','msnbc.com','thenation.com','newyorker.com',
+    'thedailybeast.com','slate.com','vox.com','salon.com','bostonglobe.com','rollingstone.com'
   ],
   'lean-left': [
     'abcnews.go.com','axios.com','bloomberg.com','cbsnews.com','cnbc.com','cnn.com',
     'insider.com','businessinsider.com','nbcnews.com','nytimes.com','npr.org',
     'politico.com','propublica.org','semafor.com','time.com','usatoday.com',
-    'washingtonpost.com','news.yahoo.com', 'variety.com', 'al-monitor.com'
+    'washingtonpost.com','news.yahoo.com','variety.com','al-monitor.com'
   ],
   center: [
     'apnews.com','reuters.com','bbc.com','bbc.co.uk','csmonitor.com','forbes.com',
-    'marketwatch.com','newsweek.com','newsnationnow.com','thehill.com', 'upi.com', 'foreignpolicy.com', 'fortune.com'
+    'marketwatch.com','newsweek.com','newsnationnow.com','thehill.com','upi.com',
+    'foreignpolicy.com','fortune.com'
   ],
   'lean-right': [
     'thedispatch.com','theepochtimes.com','foxbusiness.com','justthenews.com',
@@ -41,7 +43,7 @@ const RELIABILITY_SCORES = {
   'theguardian.com': 75, 'cbsnews.com': 74, 'cnn.com': 70, 'foxnews.com': 60,
   'newsmax.com': 40, 'oann.com': 30, 'breitbart.com': 35, 'dailymail.co.uk': 45,
   'forbes.com': 70, 'marketwatch.com': 72, 'time.com': 70, 'usatoday.com': 72,
-  'politico.com': 68, 'nbcnews.com': 70, 'abcnews.go.com': 72, 'wsj.com': 82,
+  'politico.com': 68, 'nbcnews.com': 70, 'abcnews.go.com': 72,
   'thehill.com': 65, 'news.yahoo.com': 68, 'semafor.com': 68
 };
 const DEFAULT_RELIABILITY = 50;
@@ -55,7 +57,9 @@ function parseHostParts(u) {
     const twoLevelTLDs = new Set(['co.uk','com.au','com.br','co.jp','co.kr','co.in','com.sg','com.hk']);
     const registrable = twoLevelTLDs.has(two) ? three : two;
     return { hostname, registrable };
-  } catch { return { hostname: '', registrable: '' }; }
+  } catch (e) {
+    return { hostname: '', registrable: '' };
+  }
 }
 
 const DOMAIN_TO_BIAS = (() => {
@@ -99,7 +103,7 @@ function titleKey(s) {
   return uniq.sort().join('-');
 }
 
-exports.handler = async (event) => {
+exports.handler = async function (event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -152,7 +156,6 @@ exports.handler = async (event) => {
       };
     }
 
-    // Endpoint
     const endpoint = category ? 'top-headlines' : 'search';
 
     // Build base params
@@ -168,11 +171,9 @@ exports.handler = async (event) => {
       if (country) base.append('country', country);
     }
 
-    // Over-fetch when we need local post-filtering
     const timeFiltering = !!(from || to);
     const needOverFetch = timeFiltering || doBiasFilter || (minReliability > 0) || balanced || (clusterMode === 'title');
 
-    // Essential: 25 per page cap; detect effectivePerPage dynamically from first page
     const PER_PAGE_CAP = 25;
     const targetRaw = needOverFetch
       ? Math.min(100, Math.max(maxReq, Math.ceil(maxReq * 1.5)))
@@ -208,7 +209,7 @@ exports.handler = async (event) => {
       }
     }
 
-    // ---- Page 1 (learn effectivePerPage) ----
+    // ---- Page 1 ----
     const first = await fetchPage(1, Math.min(PER_PAGE_CAP, targetRaw));
     const firstBatch = Array.isArray(first.articles) ? first.articles : [];
     totalFromAPI = typeof first.totalArticles === 'number' ? first.totalArticles : undefined;
@@ -219,7 +220,6 @@ exports.handler = async (event) => {
       if (key && !seen.has(key)) { seen.add(key); collected.push(a); }
     }
 
-    // Early return if nothing
     if (collected.length === 0) {
       const payloadEmpty = basePayload({
         articles: [],
@@ -249,14 +249,13 @@ exports.handler = async (event) => {
     const remainingPages = [];
     for (let p = 2; p <= pagesNeeded; p++) remainingPages.push(p);
 
-    // Respect Essential RPS: after the first request, 3 parallel is safe for 100 target
     const perPageAsk = Math.min(PER_PAGE_CAP, targetRaw);
 
     const results = await Promise.all(
       remainingPages.map(p => fetchPageWithRetry(p, perPageAsk))
     );
 
-    // Merge in page order (Promise.all preserves input order)
+    // Merge
     for (const nxt of results) {
       const batch = Array.isArray(nxt?.articles) ? nxt.articles : [];
       if (!batch.length) continue;
@@ -299,7 +298,7 @@ exports.handler = async (event) => {
       articles = articles.filter(a => (a.reliabilityScore ?? DEFAULT_RELIABILITY) >= minReliability);
     }
 
-    // Cluster by title (keeps first of each cluster)
+    // Cluster by title
     if (clusterMode === 'title') {
       const seenKeys = new Set();
       const clustered = [];
@@ -331,11 +330,10 @@ exports.handler = async (event) => {
       articles = picked;
     }
 
-    // Final trim to UI request
+    // Final trim
     articles = articles.slice(0, maxReq);
 
-    // Detect plan/page cap
-    const planLimited = effectivePerPage > 0 && effectivePerPage < PER_PAGE_CAP ? effectivePerPage : null;
+    const planLimited = (effectivePerPage > 0 && effectivePerPage < PER_PAGE_CAP) ? effectivePerPage : null;
 
     const payload = basePayload({
       articles,
@@ -394,6 +392,7 @@ function basePayload ({
     }
   };
 }
+
 
 
 
