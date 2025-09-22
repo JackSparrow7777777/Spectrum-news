@@ -13,12 +13,12 @@
       --primary-color: #3478F6;
       --secondary-color: #FF5733;
 
-      /* LEFT/RIGHT palette (US/KR) */
-      --left-color: #2E4172;          /* dark blue */
-      --center-left-color: #87CEEB;   /* sky blue */
+      /* LEFT/RIGHT palette (kept for badges; no borders now) */
+      --left-color: #2E4172;
+      --center-left-color: #87CEEB;
       --center-color: #7F8C8D;
-      --center-right-color: #F39C12;  /* orange */
-      --right-color: #E74C3C;         /* red */
+      --center-right-color: #F39C12;
+      --right-color: #E74C3C;
 
       --neutral-color: #27AE60;
       --light-gray: #f5f5f5;
@@ -89,26 +89,19 @@
     /* Bias chips */
     .bias-filter { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .bias-option { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
-    .bias-circle { width: 22px; height: 22px; border-radius: 50%; margin-bottom: 6px; transition: transform 0.2s; }
+    .bias-circle { width: 22px; height: 22px; border-radius: 50%; margin-bottom: 6px; transition: transform 0.2s; border: 1px solid #bbb; }
     .bias-option:hover .bias-circle { transform: scale(1.15); }
-    .bias-option.active .bias-circle { outline: 2px solid #000; outline-offset: 2px; }
     .left-bias{background: var(--left-color);} .center-left-bias{background: var(--center-left-color);}
     .center-bias{background: var(--center-color);} .center-right-bias{background: var(--center-right-color);}
     .right-bias{background: var(--right-color);}
 
-    /* Reliability slider (Violet → Green → Yellow) */
+    /* Reliability slider */
     .slider {
-      width: 100%;
-      height: 5px;
-      background: linear-gradient(to right, #7e57c2, #27AE60, #ffeb3b);
-      outline: none;
-      -webkit-appearance: none;
-      border-radius: 5px;
+      width: 100%; height: 5px; background: linear-gradient(to right, #7e57c2, #27AE60, #ffeb3b);
+      outline: none; -webkit-appearance: none; border-radius: 5px;
     }
     .slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 18px; height: 18px;
-      background: #fff; border: 2px solid var(--primary-color);
+      -webkit-appearance: none; width: 18px; height: 18px; background: #fff; border: 2px solid var(--primary-color);
       border-radius: 50%; cursor: pointer;
     }
     .slider-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #666; }
@@ -140,52 +133,30 @@
     .view-option:hover { background: var(--light-gray); }
     .view-option.active { background: var(--primary-color); color: #fff; }
 
-    /* News grid defaults */
+    /* News grids (default) */
     #news-container { display: grid; grid-template-columns: 1fr; gap: 18px; }
     .cards-2 #news-container { grid-template-columns: repeat(2, 1fr); }
     .cards-3 #news-container { grid-template-columns: repeat(3, 1fr); }
 
-    /* === Split layouts (new) === */
-    .cards-lr #news-container.split,
-    .cards-lcr #news-container.split { gap: 18px; }
+    /* Split layout (Left vs Right only; keep same card/media sizing) */
+    .split { display: grid; gap: 18px; }
     .cards-lr #news-container.split { grid-template-columns: 1fr 1fr; }
-    .cards-lcr #news-container.split { grid-template-columns: 1fr 1fr 1fr; }
-    .split { display: grid; }
-    .split-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .split-col{
+      display: grid;
+      grid-template-columns: 1fr; /* one card per row like 2-up/3-up */
+      gap: 18px;
+      min-width: 0;
+    }
 
     /* Card */
     .article-card {
       background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow);
       overflow: hidden; transition: transform 0.18s ease, box-shadow 0.18s ease;
       content-visibility: auto; contain-intrinsic-size: 600px;
+      border: 1px solid var(--medium-gray); /* simple neutral edge */
     }
     .article-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
     .article-card:focus-visible { outline: 3px solid var(--primary-color); outline-offset: 3px; }
-
-    /* Edge-only color treatment */
-.cards-lr .article-card.edge-left,
-.cards-lcr .article-card.edge-left{
-  border: 3px solid transparent;
-  background:
-    linear-gradient(#fff, #fff) padding-box,
-    linear-gradient(135deg, var(--left-color) 0%, var(--center-left-color) 100%) border-box;
-  border-radius: var(--border-radius);
-}
-.cards-lr .article-card.edge-right,
-.cards-lcr .article-card.edge-right{
-  border: 3px solid transparent;
-  background:
-    linear-gradient(#fff, #fff) padding-box,
-    /* RED is dominant (same hue as bias chip), fades slightly toward CR orange */
-    linear-gradient(135deg, var(--right-color) 0%, var(--right-color) 60%, var(--center-right-color) 100%) border-box;
-  border-radius: var(--border-radius);
-}
-.cards-lr .article-card.edge-center,
-.cards-lcr .article-card.edge-center{
-  border: 1px solid var(--medium-gray);
-  background: #fff;
-}
-
 
     .article-source { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--medium-gray); }
     .source-logo { width: 36px; height: 36px; background: var(--light-gray); border-radius: 6px; display: grid; place-items: center; font-weight: 700; color: #666; }
@@ -209,7 +180,7 @@
     .bias-badge.right{background:#fde9e7;color:#E74C3C}
     .bias-badge.unknown{background:#eee;color:#666}
 
-    /* ==== Uniform media box ==== */
+    /* Uniform media box */
     .thumb-frame {
       position: relative;
       width: 100%;
@@ -230,23 +201,11 @@
       user-select: none;
     }
 
-    /* ==== LIST VIEW CUSTOMIZATIONS ==== */
+    /* LIST view tweaks */
     .cards-1 #news-container { justify-items: center; }
     .cards-1 .article-card  { width: min(92%, 920px); }
-
-    .cards-1 .article-card .thumb-frame{
-      width: 100%;
-      margin: 0;
-      aspect-ratio: 2 / 1;
-      border-radius: 12px;
-      overflow: hidden;
-      background: transparent;
-    }
-    .cards-1 .article-card .thumb-frame img.thumb{
-      object-fit: cover !important;
-      object-position: center 35%;
-      background: transparent !important;
-    }
+    .cards-1 .article-card .thumb-frame{ aspect-ratio: 2 / 1; background: transparent; }
+    .cards-1 .article-card .thumb-frame img.thumb{ object-position: center 35%; }
 
     .article-content { padding: 12px 14px; }
     .article-title   { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
@@ -262,10 +221,7 @@
     footer .container { display: flex; justify-content: space-between; align-items: center; font-size: 13px; opacity: 0.9; }
 
     /* Responsive */
-    @media (max-width: 1024px) {
-      .cards-3 #news-container { grid-template-columns: repeat(2, 1fr); }
-      .cards-lcr #news-container.split { grid-template-columns: 1fr 1fr; }
-    }
+    @media (max-width: 1024px) { .cards-3 #news-container { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 900px) {
       main .container { flex-direction: column; }
       .sidebar { width: 100%; position: static; order: 2; }
@@ -273,50 +229,14 @@
       .cards-1 #news-container { justify-items: stretch; }
       .cards-1 .article-card { width: 100%; }
       .cards-1 .article-card .thumb-frame { aspect-ratio: 16 / 9; }
-      .cards-lr #news-container.split { grid-template-columns: 1fr; }
-      .cards-lcr #news-container.split { grid-template-columns: 1fr; }
+
+      .cards-lr #news-container.split { grid-template-columns: 1fr; } /* stack L/R on small screens */
     }
     @media (max-width: 600px) {
       header .container { flex-direction: column; align-items: stretch; }
       .search-form { width: 100%; }
       .cards-2 #news-container, .cards-3 #news-container { grid-template-columns: 1fr; }
     }
-    /* Parallel rows: consistent card heights in split modes */
-:root { --split-card-h: 440px; } /* tweak if you want taller/shorter rows */
-
-.cards-lr .article-card,
-.cards-lcr .article-card{
-  display: flex;
-  flex-direction: column;
-  height: var(--split-card-h);
-}
-
-/* Keep media area consistent and let text clamp */
-.cards-lr .thumb-frame,
-.cards-lcr .thumb-frame{ aspect-ratio: 16/9; }
-
-/* Clamp text so heights don't jump */
-.article-title{
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.article-description{
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Small-screen relax height so it doesn't feel cramped */
-@media (max-width: 900px){
-  :root { --split-card-h: 400px; }
-}
-@media (max-width: 600px){
-  :root { --split-card-h: auto; } /* stacked layout */
-}
-
   </style>
 </head>
 
@@ -336,7 +256,7 @@
 
   <main>
     <div class="container">
-      <!-- Sidebar (unchanged) -->
+      <!-- Sidebar -->
       <aside class="sidebar">
         <section class="filter-section">
           <h2>Filters</h2>
@@ -457,9 +377,8 @@
           <button class="view-option" data-view="1" role="tab" aria-selected="false">List</button>
           <button class="view-option active" data-view="2" role="tab" aria-selected="true">2-up</button>
           <button class="view-option" data-view="3" role="tab" aria-selected="false">3-up</button>
-          <!-- NEW buttons -->
           <button class="view-option" data-view="lr" role="tab" aria-selected="false">Left vs Right</button>
-          <button class="view-option" data-view="lcr" role="tab" aria-selected="false">Left / Center / Right</button>
+          <!-- Left / Center / Right REMOVED -->
         </div>
 
         <div id="error" class="error" style="display:none;"></div>
@@ -485,7 +404,7 @@
         this.currentBias = 'default';
         this.autoRefreshMs = 30 * 60 * 1000;
         this.viewRoot = document.body;
-        this.currentLayout = '2'; // 1 | 2 | 3 | lr | lcr
+        this.currentLayout = '2'; // 1 | 2 | 3 | lr
         this.debouncedLoadNews = this.debounce(() => this.loadNews(), 400);
         this.bindUI();
         this.startAutoRefresh();
@@ -509,7 +428,7 @@
         ['country-select','language-select','max-select','time-range']
           .forEach(id => document.getElementById(id).addEventListener('change', () => this.debouncedLoadNews()));
 
-        // Reliability slider on change (not every pixel)
+        // Reliability slider on change
         document.getElementById('reliability').addEventListener('change', () => this.debouncedLoadNews());
 
         // Balanced + Cluster toggles
@@ -544,10 +463,13 @@
           btn.addEventListener('click', () => {
             viewBtns.forEach(x => { x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
             btn.classList.add('active'); btn.setAttribute('aria-selected','true');
-            const mode = btn.dataset.view;      // '1' | '2' | '3' | 'lr' | 'lcr'
+
+            const mode = btn.dataset.view;      // '1' | '2' | '3' | 'lr'
             this.currentLayout = mode;
-            this.viewRoot.classList.remove('cards-1','cards-2','cards-3','cards-lr','cards-lcr');
+
+            this.viewRoot.classList.remove('cards-1','cards-2','cards-3','cards-lr');
             this.viewRoot.classList.add(`cards-${mode}`);
+
             this.loadNews(); // re-render to split columns if needed
           });
         });
@@ -576,7 +498,7 @@
           if (this.currentCategory) params.set('category', this.currentCategory);
           if (this.currentBias && this.currentBias !== 'default') params.set('bias', this.currentBias);
 
-          // Time range (server will filter)
+          // Time range (server filters)
           const tr = document.getElementById('time-range').value;
           if (tr !== 'any') {
             let ms = 0;
@@ -601,24 +523,16 @@
           const data = await res.json();
           if (data.error) throw new Error(data.error);
 
-          // Render according to current layout
           const articles = data.articles || [];
           if (this.currentLayout === 'lr') {
-            this.renderSplit(articles, 'lr');
-          } else if (this.currentLayout === 'lcr') {
-            this.renderSplit(articles, 'lcr');
+            this.renderSplitLR(articles);
           } else {
             this.renderArticles(articles);
           }
 
-          if (data.quotaExceeded) {
-            statusText.textContent = `Showing cached results — GNews daily quota reached`;
-            cacheText.textContent = `Response: quota (cached)`;
-          } else {
-            const cached = res.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
-            statusText.textContent = `Loaded ${(articles || []).length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
-            cacheText.textContent = `Response: ${cached}`;
-          }
+          const cached = res.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
+          statusText.textContent = `Loaded ${(articles || []).length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
+          cacheText.textContent = `Response: ${cached}`;
         } catch (err) {
           errorEl.textContent = `Failed to load news: ${err.message}`;
           errorEl.style.display = 'block';
@@ -644,8 +558,8 @@
         this._wireCardClicks(el);
       }
 
-      /* === Split renderers (Left vs Right / Left-Center-Right) === */
-      renderSplit(articles, variant /* 'lr' | 'lcr' */) {
+      /* === Left vs Right (bias split, same card sizing) === */
+      renderSplitLR(articles) {
         const el = document.getElementById('news-container');
         if (!articles || !articles.length) {
           el.innerHTML = `<div class="loading" style="padding:36px;">No articles found.</div>`;
@@ -653,45 +567,25 @@
         }
         el.classList.add('split');
 
-        // Group by spectrum (strict center; unknowns excluded in split modes)
-const groups = { left: [], center: [], right: [] };
-
-for (const a of articles) {
-  const b = (a.bias || '').trim();
-  if (b === 'left' || b === 'lean-left') {
-    groups.left.push(a);
-  } else if (b === 'right' || b === 'lean-right') {
-    groups.right.push(a);
-  } else if (b === 'center') {
-    groups.center.push(a);
-  }
-  // else: unknown/empty → excluded from LR/LCR view on purpose
-}
-
-
-        if (variant === 'lr') {
-          el.innerHTML = `
-            <div class="split-col" id="col-left"></div>
-            <div class="split-col" id="col-right"></div>
-          `;
-          const L = document.getElementById('col-left');
-          const R = document.getElementById('col-right');
-          L.innerHTML = groups.left.map(a => this.cardHTML(a, 'left')).join('');
-          R.innerHTML = groups.right.map(a => this.cardHTML(a, 'right')).join('');
-        } else { // lcr
-          el.innerHTML = `
-            <div class="split-col" id="col-left"></div>
-            <div class="split-col" id="col-center"></div>
-            <div class="split-col" id="col-right"></div>
-          `;
-          document.getElementById('col-left').innerHTML   = groups.left.map(a => this.cardHTML(a, 'left')).join('');
-          document.getElementById('col-center').innerHTML = groups.center.map(a => this.cardHTML(a, 'center')).join('');
-          document.getElementById('col-right').innerHTML  = groups.right.map(a => this.cardHTML(a, 'right')).join('');
+        // Group strictly: left=left/lean-left; right=right/lean-right; exclude center/unknown
+        const leftList = [];
+        const rightList = [];
+        for (const a of articles) {
+          const b = (a.bias || '').trim();
+          if (b === 'left' || b === 'lean-left') leftList.push(a);
+          else if (b === 'right' || b === 'lean-right') rightList.push(a);
         }
+
+        el.innerHTML = `
+          <div class="split-col" id="col-left"></div>
+          <div class="split-col" id="col-right"></div>
+        `;
+        document.getElementById('col-left').innerHTML  = leftList.map(a => this.cardHTML(a)).join('');
+        document.getElementById('col-right').innerHTML = rightList.map(a => this.cardHTML(a)).join('');
 
         // prioritize top images of each col
         el.querySelectorAll('.split-col .thumb')?.forEach((img, i) => {
-          if (i < 3) { img.loading = 'eager'; img.setAttribute('fetchpriority', 'high'); }
+          if (i < 2) { img.loading = 'eager'; img.setAttribute('fetchpriority', 'high'); }
         });
 
         this._wireCardClicks(el);
@@ -714,7 +608,7 @@ for (const a of articles) {
         rootEl.querySelectorAll('.link-btn').forEach(btn => btn.addEventListener('click', (e) => e.stopPropagation()));
       }
 
-      cardHTML(article, edgeSideOverride) {
+      cardHTML(article) {
         const title = this.truncate(article?.title, 120) || 'Untitled';
         const desc = this.truncate(article?.description, 180) || 'No description available.';
         const srcName = article?.source?.name || 'Unknown';
@@ -732,17 +626,8 @@ for (const a of articles) {
         const biasLabel = biasLabelMap[detected] || 'Unknown';
         const biasClass = detected || 'unknown';
 
-        // Which edge style to apply in split modes
-        let edgeSide = edgeSideOverride;
-        if (!edgeSide) {
-          if (detected === 'left' || detected === 'lean-left') edgeSide = 'left';
-          else if (detected === 'right' || detected === 'lean-right') edgeSide = 'right';
-          else edgeSide = 'center';
-        }
-        const edgeClass = `edge-${edgeSide}`;
-
         return `
-          <article class="article-card ${edgeClass}" data-url="${this.escape(url)}" tabindex="0" role="article" aria-label="${this.escape(title)}">
+          <article class="article-card" data-url="${this.escape(url)}" tabindex="0" role="article" aria-label="${this.escape(title)}">
             <div class="article-source">
               <div class="source-logo" aria-hidden="true">${this.initial(srcName)}</div>
               <div class="source-info">
@@ -794,6 +679,5 @@ for (const a of articles) {
   </script>
 </body>
 </html>
-
 
 
