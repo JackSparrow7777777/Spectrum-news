@@ -382,7 +382,6 @@
           <button class="view-option" data-view="1" role="tab" aria-selected="false">List</button>
           <button class="view-option active" data-view="2" role="tab" aria-selected="true">2-up</button>
           <button class="view-option" data-view="3" role="tab" aria-selected="false">3-up</button>
-          <button class="view-option" data-view="lr" role="tab" aria-selected="false">Left vs Right</button>
         </div>
 
         <div id="error" class="error" style="display:none;"></div>
@@ -406,7 +405,6 @@
         this.apiEndpoint = '/.netlify/functions/news';
         this.currentCategory = '';
         this.currentBias = 'default';
-        this.currentLayout = '2'; // '1' | '2' | '3' | 'lr'
         this.autoRefreshMs = 30 * 60 * 1000;
         this.viewRoot = document.body;
         this.debouncedLoadNews = this.debounce(() => this.loadNews(), 400);
@@ -467,15 +465,9 @@
           btn.addEventListener('click', () => {
             viewBtns.forEach(x => { x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
             btn.classList.add('active'); btn.setAttribute('aria-selected','true');
-
-            const mode = btn.dataset.view; // '1' | '2' | '3' | 'lr'
-            this.currentLayout = mode;
-
-            // LR uses the exact same grid as 2-up (only filters the set)
+            const mode = btn.dataset.view;
             this.viewRoot.classList.remove('cards-1','cards-2','cards-3');
-            this.viewRoot.classList.add(mode === 'lr' ? 'cards-2' : `cards-${mode}`);
-
-            this.loadNews(); // needed so LR can filter the set
+            this.viewRoot.classList.add(`cards-${mode}`);
           });
         });
       }
@@ -528,18 +520,16 @@
           const data = await res.json();
           if (data.error) throw new Error(data.error);
 
-          // Use same renderer for all layouts; LR only filters which articles are shown
-          let articles = data.articles || [];
-          if (this.currentLayout === 'lr') {
-            const ok = new Set(['left','lean-left','right','lean-right']);
-            articles = articles.filter(a => ok.has((a.bias || '').trim()));
+          this.renderArticles(data.articles || []);
+
+          if (data.quotaExceeded) {
+            statusText.textContent = `Showing cached results — GNews daily quota reached`;
+            cacheText.textContent = `Response: quota (cached)`;
+          } else {
+            const cached = res.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
+            statusText.textContent = `Loaded ${(data.articles || []).length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
+            cacheText.textContent = `Response: ${cached}`;
           }
-
-          this.renderArticles(articles);
-
-          const cached = res.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
-          statusText.textContent = `Loaded ${articles.length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
-          cacheText.textContent = `Response: ${cached}`;
         } catch (err) {
           errorEl.textContent = `Failed to load news: ${err.message}`;
           errorEl.style.display = 'block';
@@ -557,7 +547,7 @@
 
         el.innerHTML = articles.map(a => this.cardHTML(a)).join('');
 
-        // Prioritize the first image for perceived speed
+        // NEW: prioritize the first image for perceived speed
         const firstImg = el.querySelector('.thumb');
         if (firstImg) { firstImg.loading = 'eager'; firstImg.setAttribute('fetchpriority', 'high'); }
 
@@ -648,7 +638,5 @@
   </script>
 </body>
 </html>
-
-
 
 
