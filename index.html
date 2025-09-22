@@ -179,7 +179,7 @@
     .thumb-frame {
       position: relative;
       width: 100%;
-      aspect-ratio: 16 / 9;
+      aspect-ratio: 16 / 9;     /* default for grid views */
       background: #f2f2f2;
       overflow: hidden;
       border-radius: 12px;
@@ -190,7 +190,7 @@
       width: 100%;
       height: 100%;
       display: block;
-      object-fit: cover;
+      object-fit: cover;        /* cover in grid views */
       object-position: center;
       -webkit-user-select: none;
       user-select: none;
@@ -203,14 +203,14 @@
     .cards-1 .article-card .thumb-frame{
       width: 100%;
       margin: 0;
-      aspect-ratio: 2 / 1;
+      aspect-ratio: 2 / 1;          /* slightly shorter than 16:9 */
       border-radius: 12px;
       overflow: hidden;
       background: transparent;
     }
     .cards-1 .article-card .thumb-frame img.thumb{
-      object-fit: cover !important;
-      object-position: center 35%;
+      object-fit: cover !important;  /* fill, no letterboxing */
+      object-position: center 35%;   /* bias crop upward a bit */
       background: transparent !important;
     }
 
@@ -263,7 +263,6 @@
     <div class="container">
       <!-- Sidebar -->
       <aside class="sidebar">
-        <!-- (unchanged sidebar markup) -->
         <section class="filter-section">
           <h2>Filters</h2>
 
@@ -383,7 +382,6 @@
           <button class="view-option" data-view="1" role="tab" aria-selected="false">List</button>
           <button class="view-option active" data-view="2" role="tab" aria-selected="true">2-up</button>
           <button class="view-option" data-view="3" role="tab" aria-selected="false">3-up</button>
-          <button class="view-option" data-view="lr" role="tab" aria-selected="false">Left vs Right</button>
         </div>
 
         <div id="error" class="error" style="display:none;"></div>
@@ -407,7 +405,6 @@
         this.apiEndpoint = '/.netlify/functions/news';
         this.currentCategory = '';
         this.currentBias = 'default';
-        this.currentLayout = '2'; // '1' | '2' | '3' | 'lr'
         this.autoRefreshMs = 30 * 60 * 1000;
         this.viewRoot = document.body;
         this.debouncedLoadNews = this.debounce(() => this.loadNews(), 400);
@@ -429,13 +426,18 @@
           this.loadNews();
         });
 
+        // Basic selects (debounced)
         ['country-select','language-select','max-select','time-range']
           .forEach(id => document.getElementById(id).addEventListener('change', () => this.debouncedLoadNews()));
 
+        // Reliability slider on change (not every pixel)
         document.getElementById('reliability').addEventListener('change', () => this.debouncedLoadNews());
+
+        // Balanced + Cluster toggles
         document.getElementById('balanced-toggle').addEventListener('change', () => this.debouncedLoadNews());
         document.getElementById('cluster-toggle').addEventListener('change', () => this.debouncedLoadNews());
 
+        // Topics
         document.querySelectorAll('#topics li').forEach(li => {
           li.addEventListener('click', () => {
             document.querySelectorAll('#topics li').forEach(x => x.classList.remove('active'));
@@ -445,6 +447,7 @@
           });
         });
 
+        // Bias buttons
         document.querySelectorAll('#bias-filter .bias-option').forEach(opt => {
           opt.addEventListener('click', () => {
             document.querySelectorAll('#bias-filter .bias-option').forEach(x => {
@@ -462,15 +465,9 @@
           btn.addEventListener('click', () => {
             viewBtns.forEach(x => { x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
             btn.classList.add('active'); btn.setAttribute('aria-selected','true');
-
-            const mode = btn.dataset.view; // '1' | '2' | '3' | 'lr'
-            this.currentLayout = mode;
-
-            // LR uses the exact same grid as 2-up (only filters the set)
+            const mode = btn.dataset.view;
             this.viewRoot.classList.remove('cards-1','cards-2','cards-3');
-            this.viewRoot.classList.add(mode === 'lr' ? 'cards-2' : `cards-${mode}`);
-
-            this.loadNews();
+            this.viewRoot.classList.add(`cards-${mode}`);
           });
         });
       }
@@ -498,6 +495,7 @@
           if (this.currentCategory) params.set('category', this.currentCategory);
           if (this.currentBias && this.currentBias !== 'default') params.set('bias', this.currentBias);
 
+          // Time range (server will filter; GNews never sees from/to)
           const tr = document.getElementById('time-range').value;
           if (tr !== 'any') {
             let ms = 0;
@@ -508,9 +506,11 @@
             params.set('to', new Date().toISOString());
           }
 
+          // Reliability floor
           const minReliability = parseInt(document.getElementById('reliability').value, 10) || 0;
           if (minReliability > 0) params.set('minReliability', String(minReliability));
 
+          // Balanced + cluster toggles
           if (document.getElementById('balanced-toggle').checked) params.set('balanced','1');
           if (document.getElementById('cluster-toggle').checked) params.set('cluster','title');
 
@@ -520,19 +520,16 @@
           const data = await res.json();
           if (data.error) throw new Error(data.error);
 
-          let articles = data.articles || [];
+          this.renderArticles(data.articles || []);
 
-          // LR = exact same layout as 2-up; only the set is filtered
-          if (this.currentLayout === 'lr') {
-            const ok = new Set(['left','lean-left','right','lean-right']);
-            articles = articles.filter(a => ok.has((a.bias || '').trim()));
+          if (data.quotaExceeded) {
+            statusText.textContent = `Showing cached results — GNews daily quota reached`;
+            cacheText.textContent = `Response: quota (cached)`;
+          } else {
+            const cached = res.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
+            statusText.textContent = `Loaded ${(data.articles || []).length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
+            cacheText.textContent = `Response: ${cached}`;
           }
-
-          this.renderArticles(articles);
-
-          const cached = res.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
-          statusText.textContent = `Loaded ${articles.length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
-          cacheText.textContent = `Response: ${cached}`;
         } catch (err) {
           errorEl.textContent = `Failed to load news: ${err.message}`;
           errorEl.style.display = 'block';
@@ -550,6 +547,7 @@
 
         el.innerHTML = articles.map(a => this.cardHTML(a)).join('');
 
+        // NEW: prioritize the first image for perceived speed
         const firstImg = el.querySelector('.thumb');
         if (firstImg) { firstImg.loading = 'eager'; firstImg.setAttribute('fetchpriority', 'high'); }
 
@@ -640,5 +638,3 @@
   </script>
 </body>
 </html>
-
-
