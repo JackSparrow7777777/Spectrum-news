@@ -9,7 +9,7 @@ const API_BASE = 'https://gnews.io/api/v4';
 const BIAS_BUCKETS = {
   left: [
     'alternet.org','democracynow.org','theguardian.com','huffpost.com','theintercept.com',
-    'jacobin.com','motherjones.com','msnbc.com','thenation.com','newyorker.com',
+    'jacobin.com','motherjones.com','msnbc.com','thenation.com','newyorker.com', 'theatlantic.com'
     'thedailybeast.com','slate.com','vox.com','salon.com', 'bostonglobe.com', 'rollingstone.com'
   ],
   'lean-left': [
