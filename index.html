@@ -13,7 +13,7 @@
       --primary-color: #3478F6;
       --secondary-color: #FF5733;
 
-      /* LEFT/RIGHT palette (kept for badges; no borders now) */
+      /* LEFT/RIGHT palette (US/KR) */
       --left-color: #2E4172;
       --center-left-color: #87CEEB;
       --center-color: #7F8C8D;
@@ -89,19 +89,26 @@
     /* Bias chips */
     .bias-filter { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .bias-option { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
-    .bias-circle { width: 22px; height: 22px; border-radius: 50%; margin-bottom: 6px; transition: transform 0.2s; border: 1px solid #bbb; }
+    .bias-circle { width: 22px; height: 22px; border-radius: 50%; margin-bottom: 6px; transition: transform 0.2s; }
     .bias-option:hover .bias-circle { transform: scale(1.15); }
+    .bias-option.active .bias-circle { outline: 2px solid #000; outline-offset: 2px; }
     .left-bias{background: var(--left-color);} .center-left-bias{background: var(--center-left-color);}
     .center-bias{background: var(--center-color);} .center-right-bias{background: var(--center-right-color);}
     .right-bias{background: var(--right-color);}
 
-    /* Reliability slider */
+    /* Reliability slider (Violet → Green → Yellow) */
     .slider {
-      width: 100%; height: 5px; background: linear-gradient(to right, #7e57c2, #27AE60, #ffeb3b);
-      outline: none; -webkit-appearance: none; border-radius: 5px;
+      width: 100%;
+      height: 5px;
+      background: linear-gradient(to right, #7e57c2, #27AE60, #ffeb3b);
+      outline: none;
+      -webkit-appearance: none;
+      border-radius: 5px;
     }
     .slider::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 18px; height: 18px; background: #fff; border: 2px solid var(--primary-color);
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      background: #fff; border: 2px solid var(--primary-color);
       border-radius: 50%; cursor: pointer;
     }
     .slider-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #666; }
@@ -128,44 +135,20 @@
     @keyframes pulse { 0%{transform:scale(1);opacity:.8} 50%{transform:scale(1.25);opacity:1} 100%{transform:scale(1);opacity:.8} }
     @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
 
-    .view-options { display: flex; flex-wrap: wrap; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); overflow: hidden; margin-bottom: 16px; }
+    .view-options { display: flex; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); overflow: hidden; margin-bottom: 16px; }
     .view-option { padding: 10px 16px; font-weight: 500; transition: background-color 0.15s; flex: 0 0 auto; }
     .view-option:hover { background: var(--light-gray); }
     .view-option.active { background: var(--primary-color); color: #fff; }
 
-    /* News grids (default) */
+    /* News grid */
     #news-container { display: grid; grid-template-columns: 1fr; gap: 18px; }
     .cards-2 #news-container { grid-template-columns: repeat(2, 1fr); }
     .cards-3 #news-container { grid-template-columns: repeat(3, 1fr); }
 
-    /* Split layout (Left vs Right only; keep same card/media sizing) */
-    /* Left vs Right uses the same 2-up grid, but we place cards into column 1 or 2 */
-.cards-lr #news-container{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  grid-auto-flow: row dense; /* backfills space to prevent gaps */
-}
-
-.cards-lr .bias-left  { grid-column: 1; }
-.cards-lr .bias-right { grid-column: 2; }
-
-/* keep images identical to 2-up/3-up */
-.cards-lr .thumb-frame{ aspect-ratio: 16/9; }
-.cards-lr .thumb-frame img.thumb{
-  object-fit: cover;
-  object-position: center;
-}
-
-    .cards-lr #news-container.split { grid-template-columns: 1fr 1fr; }
-    
-
-    /* Card */
     .article-card {
       background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow);
       overflow: hidden; transition: transform 0.18s ease, box-shadow 0.18s ease;
       content-visibility: auto; contain-intrinsic-size: 600px;
-      border: 1px solid var(--medium-gray); /* simple neutral edge */
     }
     .article-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
     .article-card:focus-visible { outline: 3px solid var(--primary-color); outline-offset: 3px; }
@@ -192,11 +175,11 @@
     .bias-badge.right{background:#fde9e7;color:#E74C3C}
     .bias-badge.unknown{background:#eee;color:#666}
 
-    /* Uniform media box */
+    /* ==== Uniform media box ==== */
     .thumb-frame {
       position: relative;
       width: 100%;
-      aspect-ratio: 16 / 9;
+      aspect-ratio: 16 / 9;     /* default for grid views */
       background: #f2f2f2;
       overflow: hidden;
       border-radius: 12px;
@@ -207,17 +190,29 @@
       width: 100%;
       height: 100%;
       display: block;
-      object-fit: cover;
+      object-fit: cover;        /* cover in grid views */
       object-position: center;
       -webkit-user-select: none;
       user-select: none;
     }
 
-    /* LIST view tweaks */
+    /* ==== LIST VIEW CUSTOMIZATIONS ==== */
     .cards-1 #news-container { justify-items: center; }
     .cards-1 .article-card  { width: min(92%, 920px); }
-    .cards-1 .article-card .thumb-frame{ aspect-ratio: 2 / 1; background: transparent; }
-    .cards-1 .article-card .thumb-frame img.thumb{ object-position: center 35%; }
+
+    .cards-1 .article-card .thumb-frame{
+      width: 100%;
+      margin: 0;
+      aspect-ratio: 2 / 1;          /* slightly shorter than 16:9 */
+      border-radius: 12px;
+      overflow: hidden;
+      background: transparent;
+    }
+    .cards-1 .article-card .thumb-frame img.thumb{
+      object-fit: cover !important;  /* fill, no letterboxing */
+      object-position: center 35%;   /* bias crop upward a bit */
+      background: transparent !important;
+    }
 
     .article-content { padding: 12px 14px; }
     .article-title   { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
@@ -241,8 +236,6 @@
       .cards-1 #news-container { justify-items: stretch; }
       .cards-1 .article-card { width: 100%; }
       .cards-1 .article-card .thumb-frame { aspect-ratio: 16 / 9; }
-
-      .cards-lr #news-container.split { grid-template-columns: 1fr; } /* stack L/R on small screens */
     }
     @media (max-width: 600px) {
       header .container { flex-direction: column; align-items: stretch; }
@@ -389,8 +382,6 @@
           <button class="view-option" data-view="1" role="tab" aria-selected="false">List</button>
           <button class="view-option active" data-view="2" role="tab" aria-selected="true">2-up</button>
           <button class="view-option" data-view="3" role="tab" aria-selected="false">3-up</button>
-          <button class="view-option" data-view="lr" role="tab" aria-selected="false">Left vs Right</button>
-          <!-- Left / Center / Right REMOVED -->
         </div>
 
         <div id="error" class="error" style="display:none;"></div>
@@ -416,7 +407,6 @@
         this.currentBias = 'default';
         this.autoRefreshMs = 30 * 60 * 1000;
         this.viewRoot = document.body;
-        this.currentLayout = '2'; // 1 | 2 | 3 | lr
         this.debouncedLoadNews = this.debounce(() => this.loadNews(), 400);
         this.bindUI();
         this.startAutoRefresh();
@@ -440,7 +430,7 @@
         ['country-select','language-select','max-select','time-range']
           .forEach(id => document.getElementById(id).addEventListener('change', () => this.debouncedLoadNews()));
 
-        // Reliability slider on change
+        // Reliability slider on change (not every pixel)
         document.getElementById('reliability').addEventListener('change', () => this.debouncedLoadNews());
 
         // Balanced + Cluster toggles
@@ -475,14 +465,9 @@
           btn.addEventListener('click', () => {
             viewBtns.forEach(x => { x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
             btn.classList.add('active'); btn.setAttribute('aria-selected','true');
-
-            const mode = btn.dataset.view;      // '1' | '2' | '3' | 'lr'
-            this.currentLayout = mode;
-
-            this.viewRoot.classList.remove('cards-1','cards-2','cards-3','cards-lr');
+            const mode = btn.dataset.view;
+            this.viewRoot.classList.remove('cards-1','cards-2','cards-3');
             this.viewRoot.classList.add(`cards-${mode}`);
-
-            this.loadNews(); // re-render to split columns if needed
           });
         });
       }
@@ -510,7 +495,7 @@
           if (this.currentCategory) params.set('category', this.currentCategory);
           if (this.currentBias && this.currentBias !== 'default') params.set('bias', this.currentBias);
 
-          // Time range (server filters)
+          // Time range (server will filter; GNews never sees from/to)
           const tr = document.getElementById('time-range').value;
           if (tr !== 'any') {
             let ms = 0;
@@ -535,16 +520,16 @@
           const data = await res.json();
           if (data.error) throw new Error(data.error);
 
-          const articles = data.articles || [];
-          if (this.currentLayout === 'lr') {
-            this.renderSplitLR(articles);
-          } else {
-            this.renderArticles(articles);
-          }
+          this.renderArticles(data.articles || []);
 
-          const cached = res.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
-          statusText.textContent = `Loaded ${(articles || []).length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
-          cacheText.textContent = `Response: ${cached}`;
+          if (data.quotaExceeded) {
+            statusText.textContent = `Showing cached results — GNews daily quota reached`;
+            cacheText.textContent = `Response: quota (cached)`;
+          } else {
+            const cached = res.headers.get('X-Cache') === 'HIT' ? 'cached' : 'fresh';
+            statusText.textContent = `Loaded ${(data.articles || []).length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
+            cacheText.textContent = `Response: ${cached}`;
+          }
         } catch (err) {
           errorEl.textContent = `Failed to load news: ${err.message}`;
           errorEl.style.display = 'block';
@@ -553,61 +538,20 @@
         }
       }
 
-      /* === Default (list/2-up/3-up) === */
       renderArticles(articles) {
         const el = document.getElementById('news-container');
         if (!articles || !articles.length) {
           el.innerHTML = `<div class="loading" style="padding:36px;">No articles found. Try a different search or broaden the time range.</div>`;
           return;
         }
-        el.classList.remove('split');
+
         el.innerHTML = articles.map(a => this.cardHTML(a)).join('');
 
-        // prioritize first image
+        // NEW: prioritize the first image for perceived speed
         const firstImg = el.querySelector('.thumb');
         if (firstImg) { firstImg.loading = 'eager'; firstImg.setAttribute('fetchpriority', 'high'); }
 
-        this._wireCardClicks(el);
-      }
-
-      /* === Left vs Right (single grid, no gaps) === */
-renderSplitLR(articles) {
-  const el = document.getElementById('news-container');
-  if (!articles || !articles.length) {
-    el.innerHTML = `<div class="loading" style="padding:36px;">No articles found.</div>`;
-    return;
-  }
-
-  // Filter strictly to left/lean-left and right/lean-right
-  const filtered = articles.filter(a => {
-    const b = (a.bias || '').trim();
-    return b === 'left' || b === 'lean-left' || b === 'right' || b === 'lean-right';
-  });
-
-  // Build cards in one grid; assign a column via a bias class
-  const html = filtered.map(a => {
-    const b = (a.bias || '').trim();
-    const colClass = (b === 'left' || b === 'lean-left') ? 'bias-left' : 'bias-right';
-    // inject the class on the outer article element
-    return this.cardHTML(a).replace(
-      /^(\s*<article\b)/,
-      `$1 class="article-card ${colClass}"`
-    );
-  }).join('');
-
-  el.innerHTML = html;
-
-  // prioritize first two images (one per column, likely)
-  el.querySelectorAll('.thumb')?.forEach((img, i) => {
-    if (i < 2) { img.loading = 'eager'; img.setAttribute('fetchpriority', 'high'); }
-  });
-
-  this._wireCardClicks(el);
-}
-
-
-      _wireCardClicks(rootEl) {
-        rootEl.querySelectorAll('.article-card').forEach(card => {
+        el.querySelectorAll('.article-card').forEach(card => {
           card.addEventListener('click', () => {
             const url = card.getAttribute('data-url');
             if (url) window.open(url, '_blank', 'noopener,noreferrer');
@@ -620,7 +564,7 @@ renderSplitLR(articles) {
             }
           });
         });
-        rootEl.querySelectorAll('.link-btn').forEach(btn => btn.addEventListener('click', (e) => e.stopPropagation()));
+        el.querySelectorAll('.link-btn').forEach(btn => btn.addEventListener('click', (e) => e.stopPropagation()));
       }
 
       cardHTML(article) {
@@ -694,5 +638,6 @@ renderSplitLR(articles) {
   </script>
 </body>
 </html>
+
 
 
