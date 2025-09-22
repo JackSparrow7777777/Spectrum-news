@@ -10,17 +10,17 @@ const BIAS_BUCKETS = {
   left: [
     'alternet.org','democracynow.org','theguardian.com','huffpost.com','theintercept.com',
     'jacobin.com','motherjones.com','msnbc.com','thenation.com','newyorker.com',
-    'thedailybeast.com','slate.com','vox.com','salon.com'
+    'thedailybeast.com','slate.com','vox.com','salon.com', 'bostonglobe.com', 'rollingstone.com'
   ],
   'lean-left': [
     'abcnews.go.com','axios.com','bloomberg.com','cbsnews.com','cnbc.com','cnn.com',
     'insider.com','businessinsider.com','nbcnews.com','nytimes.com','npr.org',
     'politico.com','propublica.org','semafor.com','time.com','usatoday.com',
-    'washingtonpost.com','news.yahoo.com'
+    'washingtonpost.com','news.yahoo.com', 'variety.com', 'al-monitor.com'
   ],
   center: [
     'apnews.com','reuters.com','bbc.com','bbc.co.uk','csmonitor.com','forbes.com',
-    'marketwatch.com','newsweek.com','newsnationnow.com','thehill.com'
+    'marketwatch.com','newsweek.com','newsnationnow.com','thehill.com', 'upi.com', 'foreignpolicy.com', 'fortune.com'
   ],
   'lean-right': [
     'thedispatch.com','theepochtimes.com','foxbusiness.com','justthenews.com',
