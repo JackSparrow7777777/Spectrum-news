@@ -162,28 +162,30 @@
     .article-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
     .article-card:focus-visible { outline: 3px solid var(--primary-color); outline-offset: 3px; }
 
-    /* Edge-only color treatment (applies in LR / LCR modes) */
-    .cards-lr .article-card.edge-left,
-    .cards-lcr .article-card.edge-left {
-      border: 2px solid transparent;
-      background:
-        linear-gradient(#fff, #fff) padding-box,
-        linear-gradient(135deg, var(--left-color), var(--center-left-color)) border-box;
-      border-radius: var(--border-radius);
-    }
-    .cards-lr .article-card.edge-right,
-    .cards-lcr .article-card.edge-right {
-      border: 2px solid transparent;
-      background:
-        linear-gradient(#fff, #fff) padding-box,
-        linear-gradient(135deg, #8B0000, var(--center-right-color)) border-box; /* dark red → orange */
-      border-radius: var(--border-radius);
-    }
-    .cards-lr .article-card.edge-center,
-    .cards-lcr .article-card.edge-center {
-      border: 1px solid var(--medium-gray);
-      background: #fff;
-    }
+    /* Edge-only color treatment */
+.cards-lr .article-card.edge-left,
+.cards-lcr .article-card.edge-left{
+  border: 3px solid transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(135deg, var(--left-color) 0%, var(--center-left-color) 100%) border-box;
+  border-radius: var(--border-radius);
+}
+.cards-lr .article-card.edge-right,
+.cards-lcr .article-card.edge-right{
+  border: 3px solid transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    /* RED is dominant (same hue as bias chip), fades slightly toward CR orange */
+    linear-gradient(135deg, var(--right-color) 0%, var(--right-color) 60%, var(--center-right-color) 100%) border-box;
+  border-radius: var(--border-radius);
+}
+.cards-lr .article-card.edge-center,
+.cards-lcr .article-card.edge-center{
+  border: 1px solid var(--medium-gray);
+  background: #fff;
+}
+
 
     .article-source { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--medium-gray); }
     .source-logo { width: 36px; height: 36px; background: var(--light-gray); border-radius: 6px; display: grid; place-items: center; font-weight: 700; color: #666; }
@@ -279,6 +281,42 @@
       .search-form { width: 100%; }
       .cards-2 #news-container, .cards-3 #news-container { grid-template-columns: 1fr; }
     }
+    /* Parallel rows: consistent card heights in split modes */
+:root { --split-card-h: 440px; } /* tweak if you want taller/shorter rows */
+
+.cards-lr .article-card,
+.cards-lcr .article-card{
+  display: flex;
+  flex-direction: column;
+  height: var(--split-card-h);
+}
+
+/* Keep media area consistent and let text clamp */
+.cards-lr .thumb-frame,
+.cards-lcr .thumb-frame{ aspect-ratio: 16/9; }
+
+/* Clamp text so heights don't jump */
+.article-title{
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.article-description{
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Small-screen relax height so it doesn't feel cramped */
+@media (max-width: 900px){
+  :root { --split-card-h: 400px; }
+}
+@media (max-width: 600px){
+  :root { --split-card-h: auto; } /* stacked layout */
+}
+
   </style>
 </head>
 
@@ -615,16 +653,21 @@
         }
         el.classList.add('split');
 
-        // Group by spectrum
-        const groups = {
-          left: [], center: [], right: []
-        };
-        for (const a of articles) {
-          const b = (a.bias || '').trim();
-          if (b === 'left' || b === 'lean-left') groups.left.push(a);
-          else if (b === 'right' || b === 'lean-right') groups.right.push(a);
-          else groups.center.push(a); // includes exact 'center' and unknowns
-        }
+        // Group by spectrum (strict center; unknowns excluded in split modes)
+const groups = { left: [], center: [], right: [] };
+
+for (const a of articles) {
+  const b = (a.bias || '').trim();
+  if (b === 'left' || b === 'lean-left') {
+    groups.left.push(a);
+  } else if (b === 'right' || b === 'lean-right') {
+    groups.right.push(a);
+  } else if (b === 'center') {
+    groups.center.push(a);
+  }
+  // else: unknown/empty → excluded from LR/LCR view on purpose
+}
+
 
         if (variant === 'lr') {
           el.innerHTML = `
