@@ -139,14 +139,26 @@
     .cards-3 #news-container { grid-template-columns: repeat(3, 1fr); }
 
     /* Split layout (Left vs Right only; keep same card/media sizing) */
-    .split { display: grid; gap: 18px; }
+    /* Left vs Right uses the same 2-up grid, but we place cards into column 1 or 2 */
+.cards-lr #news-container{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  grid-auto-flow: row dense; /* backfills space to prevent gaps */
+}
+
+.cards-lr .bias-left  { grid-column: 1; }
+.cards-lr .bias-right { grid-column: 2; }
+
+/* keep images identical to 2-up/3-up */
+.cards-lr .thumb-frame{ aspect-ratio: 16/9; }
+.cards-lr .thumb-frame img.thumb{
+  object-fit: cover;
+  object-position: center;
+}
+
     .cards-lr #news-container.split { grid-template-columns: 1fr 1fr; }
-    .split-col{
-      display: grid;
-      grid-template-columns: 1fr; /* one card per row like 2-up/3-up */
-      gap: 18px;
-      min-width: 0;
-    }
+    
 
     /* Card */
     .article-card {
@@ -558,38 +570,41 @@
         this._wireCardClicks(el);
       }
 
-      /* === Left vs Right (bias split, same card sizing) === */
-      renderSplitLR(articles) {
-        const el = document.getElementById('news-container');
-        if (!articles || !articles.length) {
-          el.innerHTML = `<div class="loading" style="padding:36px;">No articles found.</div>`;
-          return;
-        }
-        el.classList.add('split');
+      /* === Left vs Right (single grid, no gaps) === */
+renderSplitLR(articles) {
+  const el = document.getElementById('news-container');
+  if (!articles || !articles.length) {
+    el.innerHTML = `<div class="loading" style="padding:36px;">No articles found.</div>`;
+    return;
+  }
 
-        // Group strictly: left=left/lean-left; right=right/lean-right; exclude center/unknown
-        const leftList = [];
-        const rightList = [];
-        for (const a of articles) {
-          const b = (a.bias || '').trim();
-          if (b === 'left' || b === 'lean-left') leftList.push(a);
-          else if (b === 'right' || b === 'lean-right') rightList.push(a);
-        }
+  // Filter strictly to left/lean-left and right/lean-right
+  const filtered = articles.filter(a => {
+    const b = (a.bias || '').trim();
+    return b === 'left' || b === 'lean-left' || b === 'right' || b === 'lean-right';
+  });
 
-        el.innerHTML = `
-          <div class="split-col" id="col-left"></div>
-          <div class="split-col" id="col-right"></div>
-        `;
-        document.getElementById('col-left').innerHTML  = leftList.map(a => this.cardHTML(a)).join('');
-        document.getElementById('col-right').innerHTML = rightList.map(a => this.cardHTML(a)).join('');
+  // Build cards in one grid; assign a column via a bias class
+  const html = filtered.map(a => {
+    const b = (a.bias || '').trim();
+    const colClass = (b === 'left' || b === 'lean-left') ? 'bias-left' : 'bias-right';
+    // inject the class on the outer article element
+    return this.cardHTML(a).replace(
+      /^(\s*<article\b)/,
+      `$1 class="article-card ${colClass}"`
+    );
+  }).join('');
 
-        // prioritize top images of each col
-        el.querySelectorAll('.split-col .thumb')?.forEach((img, i) => {
-          if (i < 2) { img.loading = 'eager'; img.setAttribute('fetchpriority', 'high'); }
-        });
+  el.innerHTML = html;
 
-        this._wireCardClicks(el);
-      }
+  // prioritize first two images (one per column, likely)
+  el.querySelectorAll('.thumb')?.forEach((img, i) => {
+    if (i < 2) { img.loading = 'eager'; img.setAttribute('fetchpriority', 'high'); }
+  });
+
+  this._wireCardClicks(el);
+}
+
 
       _wireCardClicks(rootEl) {
         rootEl.querySelectorAll('.article-card').forEach(card => {
