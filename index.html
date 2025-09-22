@@ -185,6 +185,51 @@
   border: 1px solid var(--medium-gray);
   background: #fff;
 }
+    /* Stripe variant: only applied when body has .stripe-edges AND we're in split layouts */
+.stripe-edges.cards-lr .article-card.edge-left,
+.stripe-edges.cards-lcr .article-card.edge-left{
+  border: 3px solid transparent;
+  background:
+    /* keep card face white */
+    linear-gradient(#fff,#fff) padding-box,
+    /* base left (blue→sky) with woven rainbow */
+    linear-gradient(120deg,
+      var(--left-color) 0%,
+      var(--g1) 12%,
+      var(--g2) 24%,
+      var(--g3) 36%,
+      var(--g4) 52%,
+      var(--g5) 68%,
+      var(--center-left-color) 100%
+    ) border-box;
+  border-radius: var(--border-radius);
+}
+
+.stripe-edges.cards-lr .article-card.edge-right,
+.stripe-edges.cards-lcr .article-card.edge-right{
+  border: 3px solid transparent;
+  background:
+    linear-gradient(#fff,#fff) padding-box,
+    /* start red (prominent), sweep rainbow, land on orange */
+    linear-gradient(120deg,
+      var(--right-color) 0%,
+      var(--right-color) 20%,
+      var(--g2) 32%,
+      var(--g3) 44%,
+      var(--g4) 58%,
+      var(--g5) 72%,
+      var(--center-right-color) 100%
+    ) border-box;
+  border-radius: var(--border-radius);
+}
+
+/* Center remains neutral (no stripes) */
+.stripe-edges.cards-lr .article-card.edge-center,
+.stripe-edges.cards-lcr .article-card.edge-center{
+  border: 1px solid var(--medium-gray);
+  background: #fff;
+}
+
 
 
     .article-source { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--medium-gray); }
