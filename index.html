@@ -215,47 +215,53 @@
 
         <!-- Spectrumeter moved here -->
         <section class="filter-section">
-          <h2>Spectrumeter</h2>
-          <div class="spectrumeter" id="spectrumeter">
-            <div class="spec-row">
-              <svg class="spec-svg" viewBox="0 0 220 120" aria-hidden="true">
-                <defs>
-                  <!-- smoother multi-stop gradient (Stripe-ish) -->
-                  <linearGradient id="specGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%"   stop-color="#2b3a8a"/>
-                    <stop offset="15%"  stop-color="#4c6bd1"/>
-                    <stop offset="30%"  stop-color="#9bd7ff"/>
-                    <stop offset="50%"  stop-color="#b9c1c5"/>
-                    <stop offset="70%"  stop-color="#f4c46b"/>
-                    <stop offset="85%"  stop-color="#ff8a55"/>
-                    <stop offset="100%" stop-color="#e94b4b"/>
-                  </linearGradient>
-                </defs>
-                <path d="M20,100 A90,90 0 0,1 200,100" fill="none" stroke="#eee" stroke-width="16" stroke-linecap="round"/>
-                <path d="M20,100 A90,90 0 0,1 200,100" fill="none" stroke="url(#specGradient)" stroke-width="16" stroke-linecap="round"/>
-                <g font-size="10" fill="#666" text-anchor="middle">
-                  <text x="32"  y="112">Left</text>
-                  <text x="76"  y="112">CL</text>
-                  <text x="110" y="112">Center</text>
-                  <text x="144" y="112">CR</text>
-                  <text x="188" y="112">Right</text>
-                </g>
-                <circle cx="110" cy="100" r="6" fill="#444"/>
-                <g class="needle" id="spec-needle">
-                  <!-- neutral needle pointing right; rotation will fan ±90° -->
-                  <polygon points="110,100 106,100 170,86" fill="#444"/>
-                </g>
-              </svg>
+  <h2>Spectrumeter</h2>
+  <div class="spectrumeter" id="spectrumeter">
+    <div class="spec-row">
+      <svg class="spec-svg" viewBox="0 0 220 120" aria-hidden="true">
+        <defs>
+          <!-- smooth, friendly gradient -->
+          <linearGradient id="specGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stop-color="#2b3a8a"/>
+            <stop offset="15%"  stop-color="#4c6bd1"/>
+            <stop offset="30%"  stop-color="#9bd7ff"/>
+            <stop offset="50%"  stop-color="#b9c1c5"/>
+            <stop offset="70%"  stop-color="#f4c46b"/>
+            <stop offset="85%"  stop-color="#ff8a55"/>
+            <stop offset="100%" stop-color="#e94b4b"/>
+          </linearGradient>
+        </defs>
 
-              <div class="spec-meta" id="spec-meta"></div>
-              <button class="see-more" id="spec-toggle" aria-expanded="false">See details</button>
-            </div>
+        <!-- Arc lifted from y=100 to y=92 to avoid label overlap -->
+        <path d="M20,92 A90,90 0 0,1 200,92" fill="none" stroke="#eee" stroke-width="16" stroke-linecap="round"/>
+        <path d="M20,92 A90,90 0 0,1 200,92" fill="none" stroke="url(#specGradient)" stroke-width="16" stroke-linecap="round"/>
 
-            <div class="spec-details" id="spec-details" aria-hidden="true">
-              <div class="spec-grid" id="spec-bars"></div>
-            </div>
-          </div>
-        </section>
+        <!-- Labels dropped a bit for spacing -->
+        <g font-size="10" fill="#666" text-anchor="middle">
+          <text x="32"  y="116">Left</text>
+          <text x="76"  y="116">CL</text>
+          <text x="110" y="116">Center</text>
+          <text x="144" y="116">CR</text>
+          <text x="188" y="116">Right</text>
+        </g>
+
+        <!-- Needle pivot & shape moved up to y=92 -->
+        <circle cx="110" cy="92" r="6" fill="#444"/>
+        <g class="needle" id="spec-needle">
+          <polygon points="110,92 106,92 170,78" fill="#444"/>
+        </g>
+      </svg>
+
+      <!-- chips row removed -->
+      <button class="see-more" id="spec-toggle" aria-expanded="false">See details</button>
+    </div>
+
+    <div class="spec-details" id="spec-details" aria-hidden="true">
+      <div class="spec-grid" id="spec-bars"></div>
+    </div>
+  </div>
+</section>
+
 
         <section class="filter-section">
           <h2>Reliability</h2>
@@ -482,23 +488,41 @@
 
       /* ===== Spectrumeter ===== */
       renderSpectrumeter(articles){
-        const buckets=['left','lean-left','center','lean-right','right'];
-        const labels =['Left','Center Left','Center','Center Right','Right'];
-        const colors =['var(--left-color)','var(--center-left-color)','var(--center-color)','var(--center-right-color)','var(--right-color)'];
-        const counts={left:0,'lean-left':0,center:0,'lean-right':0,right:0,unknown:0};
-        for(const a of (articles||[])){ counts[a.bias] != null ? counts[a.bias]++ : counts.unknown++; }
-        const total=(articles||[]).length||1;
+  const buckets = ['left','lean-left','center','lean-right','right'];
+  const labels  = ['Left','Center Left','Center','Center Right','Right'];
 
-        // pick bucket with maximum share
-let maxIdx = 0, maxVal = -1;
-buckets.forEach((b, i) => { if (counts[b] > maxVal) { maxVal = counts[b]; maxIdx = i; } });
+  const counts = { left:0, 'lean-left':0, center:0, 'lean-right':0, right:0, unknown:0 };
+  for (const a of (articles || [])) { counts[a.bias] != null ? counts[a.bias]++ : counts.unknown++; }
+  const total = (articles || []).length || 1;
 
-// map buckets across the semicircle: Left (-180°) → Center (-90°) → Right (0°)
-const needleEl = document.getElementById('spec-needle');
-if (needleEl) {
-  const angles = [-180, -135, -90, -45, 0]; // Left, CL, Center, CR, Right
-  needleEl.style.transform = `rotate(${angles[maxIdx]}deg)`;
+  // mode bucket
+  let maxIdx = 0, maxVal = -1;
+  buckets.forEach((b, i) => { if (counts[b] > maxVal) { maxVal = counts[b]; maxIdx = i; } });
+
+  // Map Left→Right across the semicircle: -180° .. 0°
+  const needleEl = document.getElementById('spec-needle');
+  if (needleEl) {
+    const angles = [-180, -135, -90, -45, 0];  // Left, CL, Center, CR, Right
+    needleEl.style.transform = `rotate(${angles[maxIdx]}deg)`;
+  }
+
+  // Details-only (bars). Chips row removed.
+  const bars = document.getElementById('spec-bars');
+  const mkRow = (name, className, pct) => `
+    <div>${name}</div>
+    <div class="bar"><span class="${className}" style="width:${pct}%;"></span></div>
+    <div style="text-align:right">${pct}%</div>
+  `;
+  const pct = v => Math.round((v / total) * 100);
+  bars.innerHTML =
+    mkRow('Left','bar-left',pct(counts.left)) +
+    mkRow('Center Left','bar-lean-left',pct(counts['lean-left'])) +
+    mkRow('Center','bar-center',pct(counts.center)) +
+    mkRow('Center Right','bar-lean-right',pct(counts['lean-right'])) +
+    mkRow('Right','bar-right',pct(counts.right)) +
+    (counts.unknown ? mkRow('Unknown','bar-unknown',pct(counts.unknown)) : '');
 }
+
 
 
 
