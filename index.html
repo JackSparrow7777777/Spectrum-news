@@ -493,10 +493,10 @@
         let maxIdx=0, maxVal=-1;
         buckets.forEach((b,i)=>{ if(counts[b]>maxVal){ maxVal=counts[b]; maxIdx=i; } });
 
-        // map to wider ±90° sweep to hit the right label precisely
-        const angles=[-90,-45,0,45,90];  // Left → Right
-        const needle=document.getElementById('spec-needle');
-        needle.style.transform=`rotate(${angles[maxIdx]}deg)`;
+        // map buckets to sweep across the semicircle: Left (-180°) → Center (-90°) → Right (0°)
+const angles = [-180, -135, -90, -45, 0];  // Left, CL, Center, CR, Right
+needle.style.transform = `rotate(${angles[maxIdx]}deg)`;
+
 
         // summary chips
         const meta=document.getElementById('spec-meta');
