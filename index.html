@@ -1,602 +1,634 @@
- <!DOCTYPE html>
-     <html lang="en">
-     <head>
-       <meta charset="UTF-8" />
-       <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-       <title>Spectrum News — Clean</title>
-
-       <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"/>
-
-       <style>
-         :root{
-           --primary-color:#3478F6; --secondary-color:#FF5733;
-           --left-color:#243b6b;
-           --center-left-color:#9bd7ff;
-           --center-color:#7F8C8D;
-           --center-right-color:#F4B659;
-           --right-color:#E94B4B;
-           --light-gray:#f5f5f5; --medium-gray:#e0e0e0; --dark-gray:#333; --text-color:#333;
-           --border-radius:12px; --box-shadow:0 2px 8px rgba(0,0,0,.06);
-         }
-         *{margin:0;padding:0;box-sizing:border-box}
-         body{font-family:'Roboto',system-ui,-apple-system,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;line-height:1.6;color:var(--text-color);background:#f9f9f9}
-         .container{max-width:1200px;margin:0 auto;padding:0 15px}
-         a{text-decoration:none;color:inherit}ul{list-style:none}button{cursor:pointer;border:none;background:none;font-family:inherit}
-
-         header{background:#fff;box-shadow:var(--box-shadow);padding:14px 0;position:sticky;top:0;z-index:100}
-         header .container{display:flex;gap:16px;justify-content:space-between;align-items:center}
-         .logo h1{font-size:22px;font-weight:700;color:var(--primary-color);letter-spacing:.2px}
-         .logo span{color:#E94B4B;font-weight:500}
-         .search-bar{flex:1}
-         .search-form{display:flex;gap:10px}
-         .search-bar input{width:100%;padding:10px 14px;border:1px solid var(--medium-gray);border-radius:20px;font-size:14px;background:#fff}
-         .search-btn{background:var(--primary-color);color:#fff;padding:10px 16px;border-radius:20px;font-weight:500}
-
-         main{padding:18px 0}
-         main .container{display:flex;gap:20px}
-
-         /* Left Topics Card */
-         .topics-sidebar{width:200px;background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:18px;position:sticky;top:78px;height:fit-content;m
-     argin-right:20px}
-         .topics-sidebar h2{font-size:18px;margin-bottom:12px;color:var(--dark-gray)}
-         .topics-list li{padding:8px 0;cursor:pointer;color:#555;transition:color .15s;display:flex;align-items:center;justify-content:space-between}
-         .topics-list li:hover{color:var(--primary-color)} .topics-list li.active{color:var(--primary-color);font-weight:500}
-
-         .sidebar{width:260px;background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:18px;position:sticky;top:78px;height:fit-content}
-         .filter-section{margin-bottom:22px}
-         .filter-section h2{font-size:18px;margin-bottom:12px;color:var(--dark-gray)}
-         .filter-section h3{font-size:14px;margin:12px 0 8px;color:var(--dark-gray)}
-         .select{width:100%;padding:10px 12px;border:1px solid var(--medium-gray);border-radius:var(--border-radius);background:#fff;font-size:14px}
-         .toggle-row{display:flex;align-items:center;gap:10px;font-size:14px;margin-top:8px}
-         .toggle-row input{transform:translateY(1px)}
-
-         .bias-filter{display:flex;justify-content:space-between;align-items:center;gap:8px}
-         .bias-option{display:flex;flex-direction:column;align-items:center;cursor:pointer}
-         .bias-circle{width:22px;height:22px;border-radius:50%;margin-bottom:6px;transition:transform .2s}
-         .bias-option:hover .bias-circle{transform:scale(1.15)}
-         .bias-option.active .bias-circle{outline:2px solid #000;outline-offset:2px}
-         .left-bias{background:var(--left-color)} .center-left-bias{background:var(--center-left-color)}
-         .center-bias{background:var(--center-color)} .center-right-bias{background:var(--center-right-color)}
-         .right-bias{background:var(--right-color)}
-
-         .slider{width:100%;height:5px;background:linear-gradient(to right,#7e57c2,#27AE60,#ffeb3b);outline:none;-webkit-appearance:none;border-radius:5px}
-         .slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:#fff;border:2px solid var(--primary-color);border-radius:50%;cursor:pointer}
-         .slider-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:#666}
-
-         .content{flex:1;min-width:0}
-         .status-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:#fff;border-radius:var(--border-radius);box-shadow:var(--
-     box-shadow);padding:10px 14px;margin-bottom:14px;font-size:13px;color:#666}
-         .pill{display:inline-flex;align-items:center;gap:8px;background:var(--light-gray);border-radius:999px;padding:6px 10px;font-weight:500}
-         .dot{width:8px;height:8px;border-radius:50%;background:#3478F6;animation:pulse 1.8s ease-in-out infinite}
-         @keyframes pulse{0%{transform:scale(1);opacity:.8}50%{transform:scale(1.25);opacity:1}100%{transform:scale(1);opacity:.8}}
-         @media (prefers-reduced-motion:reduce){.dot{animation:none}}
-
-         .view-options{display:flex;background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);overflow:hidden;margin-bottom:16px}
-         .view-option{padding:10px 16px;font-weight:500;transition:background-color .15s;flex:0 0 auto}
-         .view-option:hover{background:var(--light-gray)} .view-option.active{background:var(--primary-color);color:#fff}
-
-         /* Spectrumeter (sidebar) */
-         .spectrumeter{background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:12px}
-         .spec-row{display:flex;flex-direction:column;gap:10px}
-         .spec-svg{width:100%;height:120px}
-         /* CSS transform is not used for the needle anymore (we rotate via SVG attribute) */
-         .see-more{align-self:flex-start;background:#f0f6ff;color:#2054d2;padding:6px 8px;border-radius:8px;font-weight:600}
-
-         .spec-details{display:none;margin-top:8px}
-         .spec-details.open{display:block}
-         .bar{height:8px;border-radius:6px;background:#eee;overflow:hidden}
-         .bar > span{display:block;height:100%}
-         .bar-left{background:var(--left-color)} .bar-lean-left{background:var(--center-left-color)}
-         .bar-center{background:var(--center-color)} .bar-lean-right{background:var(--center-right-color)}
-         .bar-right{background:var(--right-color)} .bar-unknown{background:#bbb}
-         .spec-grid{display:grid;grid-template-columns:88px 1fr 38px;gap:6px;align-items:center;font-size:12px}
-
-         #news-container{display:grid;grid-template-columns:1fr;gap:18px;align-items:stretch}
-         .cards-2 #news-container{grid-template-columns:repeat(2,1fr)}
-         .cards-3 #news-container{grid-template-columns:repeat(3,1fr)}
-
-         .article-card{background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);overflow:hidden;transition:transform .18s ease,box-shadow .18s
-     ease;content-visibility:auto;contain-intrinsic-size:600px;display:flex;flex-direction:column;height:100%}
-         .article-card:hover{transform:translateY(-4px);box-shadow:0 8px 22px rgba(0,0,0,.08)}
-         .article-card:focus-visible{outline:3px solid var(--primary-color);outline-offset:3px}
-         .article-source{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--medium-gray)}
-         .source-logo{width:36px;height:36px;background:var(--light-gray);border-radius:6px;display:grid;place-items:center;font-weight:700;color:#666}
-         .source-info{flex:1;min-width:0}
-         .source-name{font-weight:600;font-size:14px}
-         .source-meta{display:flex;gap:8px;flex-wrap:wrap;color:#777;font-size:12px;margin-top:2px}
-         .reliability-badge{padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
-         .reliability--over{background:#fff6b3;color:#7a6700}
-         .reliability--default{background:#e6f7e6;color:#1b7f3a}
-         .reliability--under{background:#efe6ff;color:#5b3aa3}
-         .bias-badge{background:#f2f3f4;color:#444;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
-         .source-meta .reliability-badge,.source-meta .bias-badge{font-size:11px;padding:2px 6px}
-         .bias-badge.left{background:#e7f3fb;color:#2E4172}
-         .bias-badge.lean-left{background:#eaf6ff;color:#2E86C1}
-         .bias-badge.center{background:#f2f3f4;color:#7F8C8D}
-         .bias-badge.lean-right{background:#fef5e7;color:#F39C12}
-         .bias-badge.right{background:#fde9e7;color:#E94B4B}
-         .bias-badge.unknown{background:#eee;color:#666}
-
-         .thumb-frame{position:relative;width:100%;aspect-ratio:16/9;background:#f2f2f2;overflow:hidden;border-radius:12px}
-         .thumb-frame img.thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;user-select:none}
-
-         .cards-1 #news-container{justify-items:center}
-         .cards-1 .article-card{width:min(92%,920px)}
-         .cards-1 .article-card .thumb-frame{aspect-ratio:2/1;background:transparent}
-         .cards-1 .article-card .thumb-frame img.thumb{object-fit:cover !important;object-position:center 35%}
-
-         .article-content{padding:12px 14px}
-         .article-title{font-size:18px;font-weight:600;margin-bottom:8px;color:#222;line-height:1.35}
-         .article-meta{display:flex;justify-content:space-between;gap:6px;color:#666;font-size:13px;margin-bottom:10px}
-         .article-description{color:#444;font-size:14px;margin-bottom:12px}
-         .article-actions{display:flex;justify-content:space-between;align-items:center;margin-top:auto}
-         .link-btn{color:var(--primary-color);font-weight:600;padding:8px 10px;border-radius:6px;background:#f0f6ff}
-
-         .loading{text-align:center;padding:28px;color:#666}
-         .error{background:#fee;color:#b40000;padding:12px 14px;border-radius:var(--border-radius);border-left:4px solid #b40000;margin-bottom:16px}
-
-         footer{background:#333;color:#fff;padding:20px 0;margin-top:28px}
-         footer .container{display:flex;justify-content:space-between;align-items:center;font-size:13px;opacity:.9}
-
-         @media (max-width:1024px){.cards-3 #news-container{grid-template-columns:repeat(2,1fr)}}
-         @media (max-width:900px){
-           main .container{flex-direction:column}
-           .topics-sidebar{width:100%;position:static;order:3}
-           .sidebar{width:100%;position:static;order:2}
-           .content{order:1}
-           .cards-1 #news-container{justify-items:stretch}
-           .cards-1 .article-card{width:100%}
-           .cards-1 .article-card .thumb-frame{aspect-ratio:16/9}
-         }
-         @media (max-width:600px){
-           header .container{flex-direction:column;align-items:stretch}
-           .search-form{width:100%}
-           .cards-2 #news-container,.cards-3 #news-container{grid-template-columns:1fr}
-         }
-       </style>
-     </head>
-
-     <body class="cards-3">
-       <header>
-         <div class="container">
-           <div class="logo"><h1>Spectrum <span>News</span></h1></div>
-
-           <div class="search-bar">
-             <form id="search-form" class="search-form" autocomplete="off">
-               <input id="search-input" type="text" placeholder="Search news…" value="latest news" />
-               <button class="search-btn" type="submit">Search</button>
-             </form>
-           </div>
-         </div>
-       </header>
-
-       <main>
-         <div class="container">
-           <!-- Left Topics Sidebar -->
-           <aside class="topics-sidebar">
-             <section class="filter-section">
-               <h2>Topics</h2>
-               <ul class="topics-list" id="topics">
-                 <li class="active" data-category="">All</li>
-                 <li data-category="general">General</li>
-                 <li data-category="world">World</li>
-                 <li data-category="business">Business</li>
-                 <li data-category="technology">Technology</li>
-                 <li data-category="entertainment">Entertainment</li>
-                 <li data-category="sports">Sports</li>
-                 <li data-category="science">Science</li>
-                 <li data-category="health">Health</li>
-               </ul>
-             </section>
-           </aside>
-
-           <!-- Filters Sidebar -->
-           <aside class="sidebar">
-             <section class="filter-section">
-               <h2>Filters</h2>
-               <h3>Articles</h3>
-               <select id="max-select" class="select">
-                 <option value="10">10 articles</option>
-                 <option value="25">25 articles</option>
-                 <option value="50">50 articles</option>
-                 <option value="100">100 articles</option>
-               </select>
-             </section>
-
-             <section class="filter-section">
-               <h2>Bias</h2>
-               <div class="bias-filter" id="bias-filter" role="group" aria-label="Bias filter">
-                 <div class="bias-option active" data-bias="default" aria-pressed="true">
-                   <div class="bias-circle" style="background:#e0e0e0"></div><small>Default</small>
-                 </div>
-                 <div class="bias-option" data-bias="left" aria-pressed="false">
-                   <div class="bias-circle left-bias"></div><small>Left</small>
-                 </div>
-                 <div class="bias-option" data-bias="lean-left" aria-pressed="false">
-                   <div class="bias-circle center-left-bias"></div><small>CL</small>
-                 </div>
-                 <div class="bias-option" data-bias="center" aria-pressed="false">
-                   <div class="bias-circle center-bias"></div><small>Center</small>
-                 </div>
-                 <div class="bias-option" data-bias="lean-right" aria-pressed="false">
-                   <div class="bias-circle center-right-bias"></div><small>CR</small>
-                 </div>
-                 <div class="bias-option" data-bias="right" aria-pressed="false">
-                   <div class="bias-circle right-bias"></div><small>Right</small>
-                 </div>
-               </div>
-
-               <label class="toggle-row">
-                 <input type="checkbox" id="balanced-toggle" />
-                 <span>Balanced view (even mix)</span>
-               </label>
-             </section>
-
-             <!-- Spectrumeter -->
-             <section class="filter-section">
-               <h2>Spectrumeter</h2>
-               <div class="spectrumeter" id="spectrumeter">
-                 <div class="spec-row">
-                   <svg class="spec-svg" viewBox="0 0 220 120" aria-hidden="true">
-                     <defs>
-                       <linearGradient id="specGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                         <stop offset="0%"   stop-color="#2b3a8a"/>
-                         <stop offset="15%"  stop-color="#4c6bd1"/>
-                         <stop offset="30%"  stop-color="#9bd7ff"/>
-                         <stop offset="50%"  stop-color="#b9c1c5"/>
-                         <stop offset="70%"  stop-color="#f4c46b"/>
-                         <stop offset="85%"  stop-color="#ff8a55"/>
-                         <stop offset="100%" stop-color="#e94b4b"/>
-                       </linearGradient>
-                     </defs>
-                     <!-- Arc lifted to y=92 -->
-                     <path d="M20,92 A90,90 0 0,1 200,92" fill="none" stroke="#eee" stroke-width="16" stroke-linecap="round"/>
-                     <path d="M20,92 A90,90 0 0,1 200,92" fill="none" stroke="url(#specGradient)" stroke-width="16" stroke-linecap="round"/>
-                     <!-- Labels -->
-                     <g font-size="14" font-weight="500" fill="#555" text-anchor="middle">
-                       <text x="32"  y="116">Left</text>
-                       <text x="76"  y="116">CL</text>
-                       <text x="110" y="116">Center</text>
-                       <text x="144" y="116">CR</text>
-                       <text x="188" y="116">Right</text>
-                     </g>
-                     <!-- Needle pivot at (110,92). We'll rotate this <g> with an SVG transform attribute -->
-                     <g id="spec-needle">
-                       <!-- pivot disc -->
-                       <circle cx="110" cy="92" r="6" fill="#444"/>
-                       <!-- needle arm pointing to the right at 0°; rotation will pivot around 110,92 -->
-                       <line x1="110" y1="92" x2="170" y2="78" stroke="#444" stroke-width="2" stroke-linecap="round"/>
-                     </g>
-                   </svg>
-
-                   <button class="see-more" id="spec-toggle" aria-expanded="false">See details</button>
-                 </div>
-
-                 <div class="spec-details" id="spec-details" aria-hidden="true">
-                   <div class="spec-grid" id="spec-bars"></div>
-                 </div>
-               </div>
-             </section>
-
-             <section class="filter-section">
-               <h2>Reliability</h2>
-               <input id="reliability" class="slider" type="range" min="0" max="100" value="0" />
-               <div class="slider-labels"><span>Low</span><span>Medium</span><span>High</span></div>
-             </section>
-
-             <section class="filter-section">
-               <h2>Time Range</h2>
-               <select id="time-range" class="select">
-                 <option value="any">Any time</option>
-                 <option value="24h">Past 24 hours</option>
-                 <option value="7d">Past 7 days</option>
-                 <option value="30d">Past 30 days</option>
-               </select>
-             </section>
-
-             <section class="filter-section">
-               <h2>Noise Control</h2>
-               <label class="toggle-row">
-                 <input type="checkbox" id="cluster-toggle" checked />
-                 <span>Cluster similar stories</span>
-               </label>
-             </section>
-           </aside>
-
-           <!-- Content -->
-           <section class="content">
-             <div class="status-bar" id="status-bar">
-               <div class="pill"><span class="dot" aria-hidden="true"></span><span id="live-label">Live</span></div>
-               <div id="status-text">Loading…</div>
-               <div id="cache-text" style="opacity:0.8;"></div>
-             </div>
-
-             <div class="view-options" role="tablist" aria-label="View options">
-               <button class="view-option" data-view="1" role="tab" aria-selected="false">List</button>
-               <button class="view-option active" data-view="2" role="tab" aria-selected="true">2-up</button>
-               <button class="view-option" data-view="3" role="tab" aria-selected="false">3-up</button>
-               <button class="view-option" data-view="lr" role="tab" aria-selected="false">Left vs Right</button>
-             </div>
-
-             <div id="error" class="error" style="display:none;"></div>
-             <div id="loading" class="loading" style="display:none;">Loading latest news…</div>
-
-             <div id="news-container" aria-live="polite"></div>
-           </section>
-         </div>
-       </main>
-
-       <footer>
-         <div class="container">
-           <div>© <span id="year"></span> Spectrum News</div>
-           <div>Powered by your Netlify Function + GNews</div>
-         </div>
-       </footer>
-
-       <script>
-         class NewsApp {
-           constructor() {
-             this.apiEndpoint='/.netlify/functions/news';
-             this.currentCategory=''; this.currentBias='default';
-             this.autoRefreshMs=30*60*1000;
-             this.viewRoot=document.body; this.viewMode='2';
-             this.lastArticles=[];
-             this.debouncedLoadNews=this.debounce(()=>this.loadNews(),400);
-             this.bindUI(); this.startAutoRefresh(); this.loadNews();
-           }
-
-           debounce(fn, delay=400){ let t; return(...a)=>{clearTimeout(t); t=setTimeout(()=>fn.apply(this,a),delay)} }
-
-           bindUI(){
-             document.getElementById('year').textContent=new Date().getFullYear();
-
-             document.getElementById('search-form').addEventListener('submit',e=>{e.preventDefault();this.loadNews()});
-             ['max-select','time-range'].forEach(id=>document.getElementById(id).addEventListener('change',()=>this.debouncedLoadNews()));
-             document.getElementById('reliability').addEventListener('change',()=>this.debouncedLoadNews());
-             document.getElementById('balanced-toggle').addEventListener('change',()=>this.debouncedLoadNews());
-             document.getElementById('cluster-toggle').addEventListener('change',()=>this.debouncedLoadNews());
-
-             document.querySelectorAll('#topics li').forEach(li=>{
-               li.addEventListener('click',()=>{
-                 document.querySelectorAll('#topics li').forEach(x=>x.classList.remove('active'));
-                 li.classList.add('active'); this.currentCategory=li.dataset.category||''; this.debouncedLoadNews();
-               });
-             });
-
-             document.querySelectorAll('#bias-filter .bias-option').forEach(opt=>{
-               opt.addEventListener('click',()=>{
-                 document.querySelectorAll('#bias-filter .bias-option').forEach(x=>{x.classList.remove('active');x.setAttribute('aria-pressed','false')});
-                 opt.classList.add('active'); opt.setAttribute('aria-pressed','true');
-                 this.currentBias=opt.dataset.bias||'default'; this.debouncedLoadNews();
-               });
-             });
-
-             const viewBtns=document.querySelectorAll('.view-option');
-             viewBtns.forEach(btn=>{
-               btn.addEventListener('click',()=>{
-                 viewBtns.forEach(x=>{x.classList.remove('active');x.setAttribute('aria-selected','false')});
-                 btn.classList.add('active'); btn.setAttribute('aria-selected','true');
-                 const mode=btn.dataset.view; this.viewMode=mode;
-                 this.viewRoot.classList.remove('cards-1','cards-2','cards-3');
-                 if(mode==='1') this.viewRoot.classList.add('cards-1');
-                 else if(mode==='2') this.viewRoot.classList.add('cards-2');
-                 else if(mode==='3') this.viewRoot.classList.add('cards-3');
-                 else if(mode==='lr') this.viewRoot.classList.add('cards-2'); // use 2-up grid
-                 this.renderArticles(this.lastArticles); // instant reflow (no refetch)
-               });
-             });
-
-             // Spectrumeter toggle
-             const toggle=document.getElementById('spec-toggle');
-             const details=document.getElementById('spec-details');
-             toggle.addEventListener('click',()=>{
-               const open=details.classList.toggle('open');
-               details.setAttribute('aria-hidden', String(!open));
-               toggle.setAttribute('aria-expanded', String(open));
-               toggle.textContent=open?'Hide details':'See details';
-             });
-           }
-
-           startAutoRefresh(){ setInterval(()=>this.loadNews(), this.autoRefreshMs) }
-
-           async loadNews(){
-             const loadingEl=document.getElementById('loading');
-             const errorEl=document.getElementById('error');
-             const container=document.getElementById('news-container');
-             const statusText=document.getElementById('status-text');
-             const cacheText=document.getElementById('cache-text');
-
-             loadingEl.style.display='block'; errorEl.style.display='none'; container.innerHTML='';
-
-             try{
-               const q=(document.getElementById('search-input').value||'latest news').trim();
-               const max=document.getElementById('max-select').value;
-               const lang='en';
-
-               const params=new URLSearchParams({ q, lang, max, expand:'content' });
-               if(this.currentCategory) params.set('category', this.currentCategory);
-               if(this.currentBias && this.currentBias!=='default') params.set('bias', this.currentBias);
-
-               const tr=document.getElementById('time-range').value;
-               if(tr!=='any'){
-                 let ms=0; if(tr==='24h') ms=24*60*60*1000; if(tr==='7d') ms=7*24*60*60*1000; if(tr==='30d') ms=30*24*60*60*1000;
-                 params.set('from', new Date(Date.now()-ms).toISOString()); params.set('to', new Date().toISOString());
-               }
-
-               const minReliability=parseInt(document.getElementById('reliability').value,10)||0;
-               if(minReliability>0) params.set('minReliability', String(minReliability));
-               if(document.getElementById('balanced-toggle').checked) params.set('balanced','1');
-               if(document.getElementById('cluster-toggle').checked) params.set('cluster','title');
-
-               const res=await fetch(`${this.apiEndpoint}?${params.toString()}`);
-               if(!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-               const data=await res.json(); if(data.error) throw new Error(data.error);
-
-               this.lastArticles=data.articles||[];
-               this.renderArticles(this.lastArticles);
-               this.renderSpectrumeter(this.lastArticles);
-
-               const cached = res.headers.get('X-Cache')==='HIT'?'cached':'fresh';
-               statusText.textContent = `Loaded ${this.lastArticles.length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
-               cacheText.textContent = `Response: ${cached}`;
-             }catch(err){
-               errorEl.textContent=`Failed to load news: ${err.message}`;
-               errorEl.style.display='block';
-             }finally{
-               loadingEl.style.display='none';
-             }
-           }
-
-           renderArticles(articles){
-             const el=document.getElementById('news-container');
-             if(!articles || !articles.length){
-               el.innerHTML=`<div class="loading" style="padding:36px;">No articles found. Try a different search or broaden the time range.</div>`;
-               return;
-             }
-             if(this.viewMode==='lr'){ this.renderLeftRight(articles); return; }
-             el.innerHTML = articles.map(a=>this.cardHTML(a)).join('');
-             const firstImg=el.querySelector('.thumb'); if(firstImg){ firstImg.loading='eager'; firstImg.setAttribute('fetchpriority','high'); }
-             this.attachCardHandlers(el);
-           }
-
-           renderLeftRight(articles){
-             const el=document.getElementById('news-container');
-             const LEFT=new Set(['left','lean-left']); const RIGHT=new Set(['right','lean-right']);
-             const byTime=(a,b)=>new Date(b.publishedAt||0)-new Date(a.publishedAt||0);
-             const leftPool=articles.filter(a=>LEFT.has(a.bias)).sort(byTime);
-             const rightPool=articles.filter(a=>RIGHT.has(a.bias)).sort(byTime);
-             const maxSel=parseInt(document.getElementById('max-select').value,10)||10;
-             const perSide=Math.max(1, Math.floor(maxSel/2));
-             const L=leftPool.slice(0,perSide); const R=rightPool.slice(0,perSide);
-             const pairs=Math.min(L.length,R.length);
-             const html=[];
-             for(let i=0;i<pairs;i++){ html.push(this.cardHTML(L[i])); html.push(this.cardHTML(R[i])); }
-             for(let i=pairs;i<L.length;i++) html.push(this.cardHTML(L[i]));
-             for(let i=pairs;i<R.length;i++) html.push(this.cardHTML(R[i]));
-             el.innerHTML=html.join('');
-             const firstImg=el.querySelector('.thumb'); if(firstImg){ firstImg.loading='eager'; firstImg.setAttribute('fetchpriority','high'); }
-             this.attachCardHandlers(el);
-           }
-
-           attachCardHandlers(root){
-             root.querySelectorAll('.article-card').forEach(card=>{
-               card.addEventListener('click',()=>{ const url=card.getAttribute('data-url'); if(url) window.open(url,'_blank','noopener,noreferrer'); });
-               card.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); const url=card.getAttribute('data-url'); if(url)
-     window.open(url,'_blank','noopener,noreferrer'); }});
-             });
-             root.querySelectorAll('.link-btn').forEach(btn=>btn.addEventListener('click',e=>e.stopPropagation()));
-           }
-
-           /* ===== Spectrumeter ===== */
-           renderSpectrumeter(articles){
-             const buckets=['left','lean-left','center','lean-right','right'];
-             const counts={left:0,'lean-left':0,center:0,'lean-right':0,right:0,unknown:0};
-             for(const a of (articles||[])){ counts[a.bias] != null ? counts[a.bias]++ : counts.unknown++; }
-
-             // Use only labeled articles to compute direction (ignore Unknown)
-             const labeledTotal = buckets.reduce((s,b)=>s+counts[b],0);
-
-             // target angle is a weighted average across buckets, not just the mode
-             // positions mapped across the semicircle Left(-180) .. Right(0)
-             const pos = { left:-180, 'lean-left':-135, center:-90, 'lean-right':-45, right:0 };
-
-             let angle = -90; // default Center
-             if(labeledTotal > 0){
-               let sum = 0;
-               for(const b of buckets) sum += (counts[b] / labeledTotal) * pos[b];
-               angle = sum;
-             }
-
-             // Smoothly animate to new angle (lightweight tween)
-             const needleEl = document.getElementById('spec-needle');
-             if(needleEl){
-               const prev = parseFloat(needleEl.dataset.angle || '-90');
-               const steps = 12, duration = 180; // ~180ms
-               let t = 0;
-               const start = performance.now();
-               const animate = (now)=>{
-                 const p = Math.min(1,(now-start)/duration);
-                 const a = prev + (angle - prev) * p;
-                 needleEl.setAttribute('transform', `rotate(${a} 110 92)`);
-                 if(p < 1) requestAnimationFrame(animate);
-                 else needleEl.dataset.angle = String(angle);
-               };
-               requestAnimationFrame(animate);
-             }
-
-             // Details bars
-             const total = (articles||[]).length || 1;
-             const bars=document.getElementById('spec-bars');
-             const mkRow=(name,cls,p)=>`
-               <div>${name}</div>
-               <div class="bar"><span class="${cls}" style="width:${p}%;"></span></div>
-               <div style="text-align:right">${p}%</div>
-             `;
-             const pct=v=>Math.round((v/total)*100);
-             bars.innerHTML =
-               mkRow('Left','bar-left',pct(counts.left))+
-               mkRow('Center Left','bar-lean-left',pct(counts['lean-left']))+
-               mkRow('Center','bar-center',pct(counts.center))+
-               mkRow('Center Right','bar-lean-right',pct(counts['lean-right']))+
-               mkRow('Right','bar-right',pct(counts.right))+
-               (counts.unknown ? mkRow('Unknown','bar-unknown',pct(counts.unknown)) : '');
-           }
-
-           /* ===== Cards ===== */
-           cardHTML(article){
-             const title=this.truncate(article?.title,120)||'Untitled';
-             const desc=this.truncate(article?.description,180)||'No description available.';
-             const srcName=article?.source?.name||'Unknown';
-             const dateText=this.humanTime(article?.publishedAt);
-             const img=article?.image||''; const url=article?.url||'#';
-             const rawScore=typeof article?.reliabilityScore==='number'?article.reliabilityScore:50;
-             const score=Math.round(rawScore);
-             const relClass=score>50?'reliability--over':(score<50?'reliability--under':'reliability--default');
-             const reliabilityText=`Reliability ${score}`;
-             const detected=(article.bias||'').trim();
-             const biasLabelMap={'left':'Left','lean-left':'Center Left','center':'Center','lean-right':'Center Right','right':'Right'};
-             const biasLabel=biasLabelMap[detected]||'Unknown';
-             const biasClass=detected||'unknown';
-
-             return `
-               <article class="article-card" data-url="${this.escape(url)}" tabindex="0" role="article" aria-label="${this.escape(title)}">
-                 <div class="article-source">
-                   <div class="source-logo" aria-hidden="true">${this.initial(srcName)}</div>
-                   <div class="source-info">
-                     <div class="source-name">${this.escape(srcName)}</div>
-                     <div class="source-meta">
-                       <span class="reliability-badge ${this.escape(relClass)}">${this.escape(reliabilityText)}</span>
-                       <span class="bias-badge ${this.escape(biasClass)}">${this.escape(biasLabel)}</span>
-                     </div>
-                   </div>
-                 </div>
-                 ${img ? `
-                   <div class="thumb-frame">
-                     <img class="thumb" src="${this.escape(img)}" alt="" loading="lazy" decoding="async"
-                          onerror="this.closest('.thumb-frame').style.display='none'">
-                   </div>` : '' }
-                 <div class="article-content">
-                   <h3 class="article-title">${this.escape(title)}</h3>
-                   <div class="article-meta">
-                     <span>${this.escape(dateText)}</span>
-                     <span>${this.escape(new URL(url, location.href).hostname || '')}</span>
-                   </div>
-                   <p class="article-description">${this.escape(desc)}</p>
-                   <div class="article-actions">
-                     <a class="link-btn" href="${this.escape(url)}" target="_blank" rel="noopener noreferrer">Read full article →</a>
-                   </div>
-                 </div>
-               </article>`;
-           }
-
-           truncate(t,n){ if(!t) return ''; return t.length>n ? t.slice(0,n-1)+'…' : t }
-           humanTime(iso){ if(!iso) return 'Unknown'; const d=new Date(iso); if(isNaN(d)) return 'Unknown';
-             const diff=Date.now()-d.getTime(); const h=Math.floor(diff/(1000*60*60));
-             if(h<1) return 'Just now'; if(h<24) return `${h}h ago`; const days=Math.floor(h/24); if(days===1) return 'Yesterday'; return d.toLocaleDateString(); }
-           initial(name){ const c=(name||'').trim()[0]; return (c||'?').toUpperCase() }
-           escape(str){ return String(str||'').replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])) }
-         }
-         document.addEventListener('DOMContentLoaded',()=>new NewsApp());
-       </script>
-     </body>
-     </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Spectrum News — Clean</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root{
+      --primary-color:#3478F6; --secondary-color:#FF5733;
+      --left-color:#243b6b; --center-left-color:#9bd7ff; --center-color:#7F8C8D;
+      --center-right-color:#F4B659; --right-color:#E94B4B;
+      --light-gray:#f5f5f5; --medium-gray:#e0e0e0; --dark-gray:#333; --text-color:#333;
+      --border-radius:12px; --box-shadow:0 2px 8px rgba(0,0,0,.06);
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Roboto',system-ui,-apple-system,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;line-height:1.6;color:var(--text-color);background:#f9f9f9}
+    .container{max-width:1200px;margin:0 auto;padding:0 15px}
+    a{text-decoration:none;color:inherit}ul{list-style:none}button{cursor:pointer;border:none;background:none;font-family:inherit}
+
+    header{background:#fff;box-shadow:var(--box-shadow);padding:14px 0;position:sticky;top:0;z-index:100}
+    header .container{display:flex;gap:16px;justify-content:space-between;align-items:center}
+    .logo h1{font-size:22px;font-weight:700;color:var(--primary-color);letter-spacing:.2px}
+    .logo span{color:#E94B4B;font-weight:500}
+    .search-bar{flex:1}
+    .search-form{display:flex;gap:10px}
+    .search-bar input{width:100%;padding:10px 14px;border:1px solid var(--medium-gray);border-radius:20px;font-size:14px;background:#fff}
+    .search-btn{background:var(--primary-color);color:#fff;padding:10px 16px;border-radius:20px;font-weight:500}
+
+    main{padding:18px 0}
+    main .container{display:flex;gap:20px}
+
+    /* ADD: left gutter topics card (separate column) */
+    .gutter{width:220px; /* narrow card in the grey gutter */
+      display:block;}
+    .gutter-card{background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);
+      padding:18px;position:sticky;top:78px;height:fit-content}
+    .gutter-card h2{font-size:18px;margin-bottom:12px;color:var(--dark-gray)}
+    .gutter-card .topics-list li{padding:8px 0;cursor:pointer;color:#555;transition:color .15s;display:flex;align-items:center;justify-content:space-between}
+    .gutter-card .topics-list li:hover{color:var(--primary-color)}
+    .gutter-card .topics-list li.active{color:var(--primary-color);font-weight:500}
+
+    .sidebar{width:260px;background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:18px;position:sticky;top:78px;height:fit-content}
+    .filter-section{margin-bottom:22px}
+    .filter-section h2{font-size:18px;margin-bottom:12px;color:var(--dark-gray)}
+    .filter-section h3{font-size:14px;margin:12px 0 8px;color:var(--dark-gray)}
+    .select{width:100%;padding:10px 12px;border:1px solid var(--medium-gray);border-radius:var(--border-radius);background:#fff;font-size:14px}
+    .toggle-row{display:flex;align-items:center;gap:10px;font-size:14px;margin-top:8px}
+    .toggle-row input{transform:translateY(1px)}
+
+    .bias-filter{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .bias-option{display:flex;flex-direction:column;align-items:center;cursor:pointer}
+    .bias-circle{width:22px;height:22px;border-radius:50%;margin-bottom:6px;transition:transform .2s}
+    .bias-option:hover .bias-circle{transform:scale(1.15)}
+    .bias-option.active .bias-circle{outline:2px solid #000;outline-offset:2px}
+    .left-bias{background:var(--left-color)}
+    .center-left-bias{background:var(--center-left-color)}
+    .center-bias{background:var(--center-color)}
+    .center-right-bias{background:var(--center-right-color)}
+    .right-bias{background:var(--right-color)}
+
+    .slider{width:100%;height:5px;background:linear-gradient(to right,#7e57c2,#27AE60,#ffeb3b);outline:none;-webkit-appearance:none;border-radius:5px}
+    .slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:#fff;border:2px solid var(--primary-color);border-radius:50%;cursor:pointer}
+    .slider-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:#666}
+
+    .topics-list li{padding:8px 0;cursor:pointer;color:#555;transition:color .15s;display:flex;align-items:center;justify-content:space-between}
+    .topics-list li:hover{color:var(--primary-color)}
+    .topics-list li.active{color:var(--primary-color);font-weight:500}
+
+    .content{flex:1;min-width:0}
+    .status-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:10px 14px;margin-bottom:14px;font-size:13px;color:#666}
+    .pill{display:inline-flex;align-items:center;gap:8px;background:var(--light-gray);border-radius:999px;padding:6px 10px;font-weight:500}
+    .dot{width:8px;height:8px;border-radius:50%;background:#3478F6;animation:pulse 1.8s ease-in-out infinite}
+    @keyframes pulse{0%{transform:scale(1);opacity:.8}50%{transform:scale(1.25);opacity:1}100%{transform:scale(1);opacity:.8}}
+    @media (prefers-reduced-motion:reduce){.dot{animation:none}}
+
+    .view-options{display:flex;background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);overflow:hidden;margin-bottom:16px}
+    .view-option{padding:10px 16px;font-weight:500;transition:background-color .15s;flex:0 0 auto}
+    .view-option:hover{background:var(--light-gray)}
+    .view-option.active{background:var(--primary-color);color:#fff}
+
+    /* Spectrumeter (sidebar) */
+    .spectrumeter{background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:12px}
+    .spec-row{display:flex;flex-direction:column;gap:10px}
+    .spec-svg{width:100%;height:120px}
+
+    /* ADD: make Spectrumeter tick labels match bias labels (size/weight/color) */
+    .spec-svg .tick-label{
+      font-size:12px; /* match the small labels under bias dots */
+      font-weight:400; /* bias labels are not bold */
+      fill:#666;
+    }
+
+    .see-more{align-self:flex-start;background:#f0f6ff;color:#2054d2;padding:6px 8px;border-radius:8px;font-weight:600}
+    .spec-details{display:none;margin-top:8px}
+    .spec-details.open{display:block}
+    .bar{height:8px;border-radius:6px;background:#eee;overflow:hidden}
+    .bar > span{display:block;height:100%}
+    .bar-left{background:var(--left-color)}
+    .bar-lean-left{background:var(--center-left-color)}
+    .bar-center{background:var(--center-color)}
+    .bar-lean-right{background:var(--center-right-color)}
+    .bar-right{background:var(--right-color)}
+    .bar-unknown{background:#bbb}
+    .spec-grid{display:grid;grid-template-columns:88px 1fr 38px;gap:6px;align-items:center;font-size:12px}
+
+    #news-container{display:grid;grid-template-columns:1fr;gap:18px;align-items:stretch}
+    .cards-2 #news-container{grid-template-columns:repeat(2,1fr)}
+    .cards-3 #news-container{grid-template-columns:repeat(3,1fr)}
+
+    .article-card{background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);overflow:hidden;transition:transform .18s ease,box-shadow .18s ease;content-visibility:auto;contain-intrinsic-size:600px;display:flex;flex-direction:column;height:100%}
+    .article-card:hover{transform:translateY(-4px);box-shadow:0 8px 22px rgba(0,0,0,.08)}
+    .article-card:focus-visible{outline:3px solid var(--primary-color);outline-offset:3px}
+
+    .article-source{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--medium-gray)}
+    .source-logo{width:36px;height:36px;background:var(--light-gray);border-radius:6px;display:grid;place-items:center;font-weight:700;color:#666}
+    .source-info{flex:1;min-width:0}
+    .source-name{font-weight:600;font-size:14px}
+    .source-meta{display:flex;gap:8px;flex-wrap:wrap;color:#777;font-size:12px;margin-top:2px}
+    .reliability-badge{padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+    .reliability--over{background:#fff6b3;color:#7a6700}
+    .reliability--default{background:#e6f7e6;color:#1b7f3a}
+    .reliability--under{background:#efe6ff;color:#5b3aa3}
+    .bias-badge{background:#f2f3f4;color:#444;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+    .source-meta .reliability-badge,.source-meta .bias-badge{font-size:11px;padding:2px 6px}
+    .bias-badge.left{background:#e7f3fb;color:#2E4172}
+    .bias-badge.lean-left{background:#eaf6ff;color:#2E86C1}
+    .bias-badge.center{background:#f2f3f4;color:#7F8C8D}
+    .bias-badge.lean-right{background:#fef5e7;color:#F39C12}
+    .bias-badge.right{background:#fde9e7;color:#E94B4B}
+    .bias-badge.unknown{background:#eee;color:#666}
+
+    .thumb-frame{position:relative;width:100%;aspect-ratio:16/9;background:#f2f2f2;overflow:hidden;border-radius:12px}
+    .thumb-frame img.thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;user-select:none}
+
+    .cards-1 #news-container{justify-items:center}
+    .cards-1 .article-card{width:min(92%,920px)}
+    .cards-1 .article-card .thumb-frame{aspect-ratio:2/1;background:transparent}
+    .cards-1 .article-card .thumb-frame img.thumb{object-fit:cover !important;object-position:center 35%}
+
+    .article-content{padding:12px 14px}
+    .article-title{font-size:18px;font-weight:600;margin-bottom:8px;color:#222;line-height:1.35}
+    .article-meta{display:flex;justify-content:space-between;gap:6px;color:#666;font-size:13px;margin-bottom:10px}
+    .article-description{color:#444;font-size:14px;margin-bottom:12px}
+    .article-actions{display:flex;justify-content:space-between;align-items:center;margin-top:auto}
+    .link-btn{color:var(--primary-color);font-weight:600;padding:8px 10px;border-radius:6px;background:#f0f6ff}
+
+    .loading{text-align:center;padding:28px;color:#666}
+    .error{background:#fee;color:#b40000;padding:12px 14px;border-radius:var(--border-radius);border-left:4px solid #b40000;margin-bottom:16px}
+
+    footer{background:#333;color:#fff;padding:20px 0;margin-top:28px}
+    footer .container{display:flex;justify-content:space-between;align-items:center;font-size:13px;opacity:.9}
+
+    @media (max-width:1024px){.cards-3 #news-container{grid-template-columns:repeat(2,1fr)}}
+
+    @media (max-width:900px){
+      main .container{flex-direction:column}
+      .gutter{display:none} /* ADD: hide gutter card on small screens; keep layout */
+      .sidebar{width:100%;position:static;order:2}
+      .content{order:1}
+      .cards-1 #news-container{justify-items:stretch}
+      .cards-1 .article-card{width:100%}
+      .cards-1 .article-card .thumb-frame{aspect-ratio:16/9}
+    }
+
+    @media (max-width:600px){
+      header .container{flex-direction:column;align-items:stretch}
+      .search-form{width:100%}
+      .cards-2 #news-container,.cards-3 #news-container{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body class="cards-3">
+  <header>
+    <div class="container">
+      <div class="logo"><h1>Spectrum <span>News</span></h1></div>
+      <div class="search-bar">
+        <form id="search-form" class="search-form" autocomplete="off">
+          <input id="search-input" type="text" placeholder="Search news…" value="latest news" />
+          <button class="search-btn" type="submit">Search</button>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <!-- ADD: Left gutter Topics card -->
+      <aside class="gutter" aria-label="Topics navigation">
+        <div class="gutter-card">
+          <h2>Topics</h2>
+          <ul class="topics-list" id="topics">
+            <li class="active" data-category="">All</li>
+            <li data-category="general">General</li>
+            <li data-category="world">World</li>
+            <li data-category="business">Business</li>
+            <li data-category="technology">Technology</li>
+            <li data-category="entertainment">Entertainment</li>
+            <li data-category="sports">Sports</li>
+            <li data-category="science">Science</li>
+            <li data-category="health">Health</li>
+          </ul>
+        </div>
+      </aside>
+
+      <!-- Sidebar (unchanged other than removing old Topics section) -->
+      <aside class="sidebar">
+        <section class="filter-section">
+          <h2>Filters</h2>
+          <h3>Articles</h3>
+          <select id="max-select" class="select">
+            <option value="10">10 articles</option>
+            <option value="25">25 articles</option>
+            <option value="50">50 articles</option>
+            <option value="100">100 articles</option>
+          </select>
+        </section>
+
+        <section class="filter-section">
+          <h2>Bias</h2>
+          <div class="bias-filter" id="bias-filter" role="group" aria-label="Bias filter">
+            <div class="bias-option active" data-bias="default" aria-pressed="true">
+              <div class="bias-circle" style="background:#e0e0e0"></div><small>Default</small>
+            </div>
+            <div class="bias-option" data-bias="left" aria-pressed="false">
+              <div class="bias-circle left-bias"></div><small>Left</small>
+            </div>
+            <div class="bias-option" data-bias="lean-left" aria-pressed="false">
+              <div class="bias-circle center-left-bias"></div><small>CL</small>
+            </div>
+            <div class="bias-option" data-bias="center" aria-pressed="false">
+              <div class="bias-circle center-bias"></div><small>Center</small>
+            </div>
+            <div class="bias-option" data-bias="lean-right" aria-pressed="false">
+              <div class="bias-circle center-right-bias"></div><small>CR</small>
+            </div>
+            <div class="bias-option" data-bias="right" aria-pressed="false">
+              <div class="bias-circle right-bias"></div><small>Right</small>
+            </div>
+          </div>
+          <label class="toggle-row">
+            <input type="checkbox" id="balanced-toggle" />
+            <span>Balanced view (even mix)</span>
+          </label>
+        </section>
+
+        <!-- Spectrumeter -->
+        <section class="filter-section">
+          <h2>Spectrumeter</h2>
+          <div class="spectrumeter" id="spectrumeter">
+            <div class="spec-row">
+              <svg class="spec-svg" viewBox="0 0 220 120" aria-hidden="true">
+                <defs>
+                  <linearGradient id="specGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#2b3a8a"/>
+                    <stop offset="15%" stop-color="#4c6bd1"/>
+                    <stop offset="30%" stop-color="#9bd7ff"/>
+                    <stop offset="50%" stop-color="#b9c1c5"/>
+                    <stop offset="70%" stop-color="#f4c46b"/>
+                    <stop offset="85%" stop-color="#ff8a55"/>
+                    <stop offset="100%" stop-color="#e94b4b"/>
+                  </linearGradient>
+                </defs>
+
+                <path d="M20,92 A90,90 0 0,1 200,92" fill="none" stroke="#eee" stroke-width="16" stroke-linecap="round"/>
+                <path d="M20,92 A90,90 0 0,1 200,92" fill="none" stroke="url(#specGradient)" stroke-width="16" stroke-linecap="round"/>
+
+                <!-- ADD: tick labels styled via CSS class -->
+                <g text-anchor="middle">
+                  <text class="tick-label" x="32"  y="116">Left</text>
+                  <text class="tick-label" x="76"  y="116">CL</text>
+                  <text class="tick-label" x="110" y="116">Center</text>
+                  <text class="tick-label" x="144" y="116">CR</text>
+                  <text class="tick-label" x="188" y="116">Right</text>
+                </g>
+
+                <!-- Needle -->
+                <g id="spec-needle">
+                  <circle cx="110" cy="92" r="6" fill="#444"/>
+                  <line x1="110" y1="92" x2="170" y2="78" stroke="#444" stroke-width="2" stroke-linecap="round"/>
+                </g>
+              </svg>
+
+              <button class="see-more" id="spec-toggle" aria-expanded="false">See details</button>
+            </div>
+
+            <div class="spec-details" id="spec-details" aria-hidden="true">
+              <div class="spec-grid" id="spec-bars"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="filter-section">
+          <h2>Reliability</h2>
+          <input id="reliability" class="slider" type="range" min="0" max="100" value="0" />
+          <div class="slider-labels"><span>Low</span><span>Medium</span><span>High</span></div>
+        </section>
+
+        <section class="filter-section">
+          <h2>Time Range</h2>
+          <select id="time-range" class="select">
+            <option value="any">Any time</option>
+            <option value="24h">Past 24 hours</option>
+            <option value="7d">Past 7 days</option>
+            <option value="30d">Past 30 days</option>
+          </select>
+        </section>
+
+        <section class="filter-section">
+          <h2>Noise Control</h2>
+          <label class="toggle-row">
+            <input type="checkbox" id="cluster-toggle" checked />
+            <span>Cluster similar stories</span>
+          </label>
+        </section>
+
+        <!-- REMOVED: old Topics section from inside Filters -->
+      </aside>
+
+      <!-- Content -->
+      <section class="content">
+        <div class="status-bar" id="status-bar">
+          <div class="pill"><span class="dot" aria-hidden="true"></span><span id="live-label">Live</span></div>
+          <div id="status-text">Loading…</div>
+          <div id="cache-text" style="opacity:0.8;"></div>
+        </div>
+
+        <div class="view-options" role="tablist" aria-label="View options">
+          <button class="view-option" data-view="1" role="tab" aria-selected="false">List</button>
+          <button class="view-option active" data-view="2" role="tab" aria-selected="true">2-up</button>
+          <button class="view-option" data-view="3" role="tab" aria-selected="false">3-up</button>
+          <button class="view-option" data-view="lr" role="tab" aria-selected="false">Left vs Right</button>
+        </div>
+
+        <div id="error" class="error" style="display:none;"></div>
+        <div id="loading" class="loading" style="display:none;">Loading latest news…</div>
+        <div id="news-container" aria-live="polite"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div>© <span id="year"></span> Spectrum News</div>
+      <div>Powered by your Netlify Function + GNews</div>
+    </div>
+  </footer>
+
+  <script>
+    class NewsApp{
+      constructor(){
+        this.apiEndpoint='/.netlify/functions/news';
+        this.currentCategory='';
+        this.currentBias='default';
+        this.autoRefreshMs=30*60*1000;
+        this.viewRoot=document.body;
+        this.viewMode='2';
+        this.lastArticles=[];
+        this.debouncedLoadNews=this.debounce(()=>this.loadNews(),400);
+        this.bindUI();
+        this.startAutoRefresh();
+        this.loadNews();
+      }
+      debounce(fn,delay=400){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn.apply(this,a),delay)}}
+      bindUI(){
+        document.getElementById('year').textContent=new Date().getFullYear();
+
+        document.getElementById('search-form').addEventListener('submit',e=>{e.preventDefault();this.loadNews()});
+        ['max-select','time-range'].forEach(id=>document.getElementById(id).addEventListener('change',()=>this.debouncedLoadNews()));
+        document.getElementById('reliability').addEventListener('change',()=>this.debouncedLoadNews());
+        document.getElementById('balanced-toggle').addEventListener('change',()=>this.debouncedLoadNews());
+        document.getElementById('cluster-toggle').addEventListener('change',()=>this.debouncedLoadNews());
+
+        // (Topics) — now lives in the left gutter card; same ID so no logic changes
+        document.querySelectorAll('#topics li').forEach(li=>{
+          li.addEventListener('click',()=>{
+            document.querySelectorAll('#topics li').forEach(x=>x.classList.remove('active'));
+            li.classList.add('active');
+            this.currentCategory=li.dataset.category||'';
+            this.debouncedLoadNews();
+          });
+        });
+
+        document.querySelectorAll('#bias-filter .bias-option').forEach(opt=>{
+          opt.addEventListener('click',()=>{
+            document.querySelectorAll('#bias-filter .bias-option').forEach(x=>{x.classList.remove('active');x.setAttribute('aria-pressed','false')});
+            opt.classList.add('active'); opt.setAttribute('aria-pressed','true');
+            this.currentBias=opt.dataset.bias||'default';
+            this.debouncedLoadNews();
+          });
+        });
+
+        const viewBtns=document.querySelectorAll('.view-option');
+        viewBtns.forEach(btn=>{
+          btn.addEventListener('click',()=>{
+            viewBtns.forEach(x=>{x.classList.remove('active');x.setAttribute('aria-selected','false')});
+            btn.classList.add('active'); btn.setAttribute('aria-selected','true');
+            const mode=btn.dataset.view; this.viewMode=mode;
+            this.viewRoot.classList.remove('cards-1','cards-2','cards-3');
+            if(mode==='1') this.viewRoot.classList.add('cards-1');
+            else if(mode==='2') this.viewRoot.classList.add('cards-2');
+            else if(mode==='3') this.viewRoot.classList.add('cards-3');
+            else if(mode==='lr') this.viewRoot.classList.add('cards-2'); // 2-up grid
+            this.renderArticles(this.lastArticles); // instant reflow
+          });
+        });
+
+        // Spectrumeter toggle
+        const toggle=document.getElementById('spec-toggle');
+        const details=document.getElementById('spec-details');
+        toggle.addEventListener('click',()=>{
+          const open=details.classList.toggle('open');
+          details.setAttribute('aria-hidden', String(!open));
+          toggle.setAttribute('aria-expanded', String(open));
+          toggle.textContent=open?'Hide details':'See details';
+        });
+      }
+
+      startAutoRefresh(){setInterval(()=>this.loadNews(), this.autoRefreshMs)}
+
+      async loadNews(){
+        const loadingEl=document.getElementById('loading');
+        const errorEl=document.getElementById('error');
+        const container=document.getElementById('news-container');
+        const statusText=document.getElementById('status-text');
+        const cacheText=document.getElementById('cache-text');
+
+        loadingEl.style.display='block'; errorEl.style.display='none'; container.innerHTML='';
+        try{
+          const q=(document.getElementById('search-input').value||'latest news').trim();
+          const max=document.getElementById('max-select').value;
+          const lang='en';
+          const params=new URLSearchParams({ q, lang, max, expand:'content' });
+          if(this.currentCategory) params.set('category', this.currentCategory);
+          if(this.currentBias && this.currentBias!=='default') params.set('bias', this.currentBias);
+          const tr=document.getElementById('time-range').value;
+          if(tr!=='any'){
+            let ms=0;
+            if(tr==='24h') ms=24*60*60*1000;
+            if(tr==='7d') ms=7*24*60*60*1000;
+            if(tr==='30d') ms=30*24*60*60*1000;
+            params.set('from', new Date(Date.now()-ms).toISOString());
+            params.set('to', new Date().toISOString());
+          }
+          const minReliability=parseInt(document.getElementById('reliability').value,10)||0;
+          if(minReliability>0) params.set('minReliability', String(minReliability));
+          if(document.getElementById('balanced-toggle').checked) params.set('balanced','1');
+          if(document.getElementById('cluster-toggle').checked) params.set('cluster','title');
+
+          /* NOTE: keeping your original logic; only UI changes requested */
+          const res=await fetch(`${this.apiEndpoint}?${params.toString()}`);
+          if(!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+          const data=await res.json();
+          if(data.error) throw new Error(data.error);
+
+          this.lastArticles=data.articles||[];
+          this.renderArticles(this.lastArticles);
+          this.renderSpectrumeter(this.lastArticles);
+
+          const cached = res.headers.get('X-Cache')==='HIT'?'cached':'fresh';
+          statusText.textContent = `Loaded ${this.lastArticles.length} articles • Last updated: ${new Date().toLocaleTimeString()}`;
+          cacheText.textContent = `Response: ${cached}`;
+        }catch(err){
+          errorEl.textContent=`Failed to load news: ${err.message}`;
+          errorEl.style.display='block';
+        }finally{
+          loadingEl.style.display='none';
+        }
+      }
+
+      renderArticles(articles){
+        const el=document.getElementById('news-container');
+        if(!articles || !articles.length){
+          el.innerHTML=`<div class="loading" style="padding:36px;">No articles found. Try a different search or broaden the time range.</div>`;
+          return;
+        }
+        if(this.viewMode==='lr'){ this.renderLeftRight(articles); return; }
+        el.innerHTML = articles.map(a=>this.cardHTML(a)).join('');
+        const firstImg=el.querySelector('.thumb');
+        if(firstImg){ firstImg.loading='eager'; firstImg.setAttribute('fetchpriority','high'); }
+        this.attachCardHandlers(el);
+      }
+
+      renderLeftRight(articles){
+        const el=document.getElementById('news-container');
+        const LEFT=new Set(['left','lean-left']);
+        const RIGHT=new Set(['right','lean-right']);
+        const byTime=(a,b)=>new Date(b.publishedAt||0)-new Date(a.publishedAt||0);
+        const leftPool=articles.filter(a=>LEFT.has(a.bias)).sort(byTime);
+        const rightPool=articles.filter(a=>RIGHT.has(a.bias)).sort(byTime);
+        const maxSel=parseInt(document.getElementById('max-select').value,10)||10;
+        const perSide=Math.max(1, Math.floor(maxSel/2));
+        const L=leftPool.slice(0,perSide);
+        const R=rightPool.slice(0,perSide);
+        const pairs=Math.min(L.length,R.length);
+        const html=[];
+        for(let i=0;i<pairs;i++){ html.push(this.cardHTML(L[i])); html.push(this.cardHTML(R[i])); }
+        for(let i=pairs;i<L.length;i++) html.push(this.cardHTML(L[i]));
+        for(let i=pairs;i<R.length;i++) html.push(this.cardHTML(R[i]));
+        el.innerHTML=html.join('');
+        const firstImg=el.querySelector('.thumb');
+        if(firstImg){ firstImg.loading='eager'; firstImg.setAttribute('fetchpriority','high'); }
+        this.attachCardHandlers(el);
+      }
+
+      attachCardHandlers(root){
+        root.querySelectorAll('.article-card').forEach(card=>{
+          card.addEventListener('click',()=>{
+            const url=card.getAttribute('data-url');
+            if(url) window.open(url,'_blank','noopener,noreferrer');
+          });
+          card.addEventListener('keydown',e=>{
+            if(e.key==='Enter'||e.key===' '){
+              e.preventDefault();
+              const url=card.getAttribute('data-url');
+              if(url) window.open(url,'_blank','noopener,noreferrer');
+            }
+          });
+        });
+        root.querySelectorAll('.link-btn').forEach(btn=>btn.addEventListener('click',e=>e.stopPropagation()));
+      }
+
+      /* ===== Spectrumeter ===== */
+      renderSpectrumeter(articles){
+        const buckets=['left','lean-left','center','lean-right','right'];
+        const counts={left:0,'lean-left':0,center:0,'lean-right':0,right:0,unknown:0};
+        for(const a of (articles||[])){ counts[a.bias] != null ? counts[a.bias]++ : counts.unknown++; }
+
+        const labeledTotal = buckets.reduce((s,b)=>s+counts[b],0);
+        const pos = { left:-180, 'lean-left':-135, center:-90, 'lean-right':-45, right:0 };
+        let angle = -90;
+        if(labeledTotal > 0){
+          let sum = 0;
+          for(const b of buckets) sum += (counts[b] / labeledTotal) * pos[b];
+          angle = sum;
+        }
+
+        const needleEl = document.getElementById('spec-needle');
+        if(needleEl){
+          const prev = parseFloat(needleEl.dataset.angle || '-90');
+          const duration = 180;
+          const start = performance.now();
+          const animate = (now)=>{
+            const p = Math.min(1,(now-start)/duration);
+            const a = prev + (angle - prev) * p;
+            needleEl.setAttribute('transform', `rotate(${a} 110 92)`);
+            if(p < 1) requestAnimationFrame(animate); else needleEl.dataset.angle = String(angle);
+          };
+          requestAnimationFrame(animate);
+        }
+
+        const total = (articles||[]).length || 1;
+        const bars=document.getElementById('spec-bars');
+        const pct=v=>Math.round((v/total)*100);
+        const mkRow=(name,cls,p)=> `
+          <div>${name}</div>
+          <div class="bar"><span class="${cls}" style="width:${p}%;"></span></div>
+          <div style="text-align:right">${p}%</div>
+        `;
+        bars.innerHTML =
+          mkRow('Left','bar-left',pct(counts.left))+
+          mkRow('Center Left','bar-lean-left',pct(counts['lean-left']))+
+          mkRow('Center','bar-center',pct(counts.center))+
+          mkRow('Center Right','bar-lean-right',pct(counts['lean-right']))+
+          mkRow('Right','bar-right',pct(counts.right))+
+          (counts.unknown ? mkRow('Unknown','bar-unknown',pct(counts.unknown)) : '');
+      }
+
+      /* ===== Cards ===== */
+      cardHTML(article){
+        const title=this.truncate(article?.title,120)||'Untitled';
+        const desc=this.truncate(article?.description,180)||'No description available.';
+        const srcName=article?.source?.name||'Unknown';
+        const dateText=this.humanTime(article?.publishedAt);
+        const img=article?.image||'';
+        const url=article?.url||'#';
+
+        const rawScore=typeof article?.reliabilityScore==='number'?article.reliabilityScore:50;
+        const score=Math.round(rawScore);
+        const relClass=score>50?'reliability--over':(score<50?'reliability--under':'reliability--default');
+        const reliabilityText=`Reliability ${score}`;
+
+        const detected=(article.bias||'').trim();
+        const biasLabelMap={'left':'Left','lean-left':'Center Left','center':'Center','lean-right':'Center Right','right':'Right'};
+        const biasLabel=biasLabelMap[detected]||'Unknown';
+        const biasClass=detected||'unknown';
+
+        return `
+          <article class="article-card" data-url="${this.escape(url)}" tabindex="0" role="article" aria-label="${this.escape(title)}">
+            <div class="article-source">
+              <div class="source-logo" aria-hidden="true">${this.initial(srcName)}</div>
+              <div class="source-info">
+                <div class="source-name">${this.escape(srcName)}</div>
+                <div class="source-meta">
+                  <span class="reliability-badge ${this.escape(relClass)}">${this.escape(reliabilityText)}</span>
+                  <span class="bias-badge ${this.escape(biasClass)}">${this.escape(biasLabel)}</span>
+                </div>
+              </div>
+            </div>
+            ${img ? `
+              <div class="thumb-frame">
+                <img class="thumb" src="${this.escape(img)}" alt="" loading="lazy" decoding="async" onerror="this.closest('.thumb-frame').style.display='none'">
+              </div>` : '' }
+            <div class="article-content">
+              <h3 class="article-title">${this.escape(title)}</h3>
+              <div class="article-meta">
+                <span>${this.escape(dateText)}</span>
+                <span>${this.escape(new URL(url, location.href).hostname || '')}</span>
+              </div>
+              <p class="article-description">${this.escape(desc)}</p>
+              <div class="article-actions">
+                <a class="link-btn" href="${this.escape(url)}" target="_blank" rel="noopener noreferrer">Read full article →</a>
+              </div>
+            </div>
+          </article>`;
+      }
+
+      truncate(t,n){ if(!t) return ''; return t.length>n ? t.slice(0,n-1)+'…' : t }
+      humanTime(iso){
+        if(!iso) return 'Unknown';
+        const d=new Date(iso); if(isNaN(d)) return 'Unknown';
+        const diff=Date.now()-d.getTime(); const h=Math.floor(diff/(1000*60*60));
+        if(h<1) return 'Just now'; if(h<24) return `${h}h ago`;
+        const days=Math.floor(h/24); if(days===1) return 'Yesterday';
+        return d.toLocaleDateString();
+      }
+      initial(name){ const c=(name||'').trim()[0]; return (c||'?').toUpperCase() }
+      escape(str){ return String(str||'').replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])) }
+    }
+    document.addEventListener('DOMContentLoaded',()=>new NewsApp());
+  </script>
+</body>
+</html>
