@@ -1,9 +1,13 @@
 'use strict';
 
 /**
- * GNews API Serverless Function (balanced-view v2 + topic search fix)
- * - Overfetch when balanced, supplemental pulls, strict bucket sampler, expanded right domains
- * - ALWAYS include `q` even for top-headlines so keywords work inside topics
+ * GNews API Serverless Function (balanced-view v3 + bucket-targeted backfill + topic search fix)
+ *
+ * Key behaviors:
+ *  - Always include `q` (even for top-headlines) so keywords apply inside topics.
+ *  - When `balanced=1`, we overfetch AND actively backfill under-supplied buckets
+ *    (left/lean-left/center/lean-right/right) by issuing site-targeted searches per domain.
+ *  - Smarter sampler: prefers filling from still-under-target buckets to avoid CL domination.
  */
 
 const cache = new Map();
@@ -11,7 +15,12 @@ const CACHE_DURATION = 30 * 60 * 1000;
 const API_BASE = 'https://gnews.io/api/v4';
 const PER_REQ_CAP = 25;
 
-// ---- Bias buckets (expanded) ----
+const BUCKETS = ['left','lean-left','center','lean-right','right'];
+const ALLOWED_CATEGORIES = new Set([
+  'general','world','nation','business','technology','entertainment','sports','science','health'
+]);
+
+/* -------- Bias buckets (expanded) -------- */
 const BIAS_BUCKETS = {
   left: [
     'alternet.org','democracynow.org','theguardian.com','huffpost.com','theintercept.com',
@@ -21,13 +30,13 @@ const BIAS_BUCKETS = {
   'lean-left': [
     'abcnews.go.com','axios.com','bloomberg.com','cbsnews.com','cnbc.com','cnn.com',
     'insider.com','businessinsider.com','nbcnews.com','nytimes.com','npr.org',
-    'politico.com','propublica.org','semafor.com','time.com','usatoday.com',
+    'politico.com','propublica.com','propublica.org','semafor.com','time.com','usatoday.com',
     'washingtonpost.com','news.yahoo.com','variety.com','al-monitor.com'
   ],
   center: [
     'apnews.com','reuters.com','bbc.com','bbc.co.uk','csmonitor.com','forbes.com',
     'marketwatch.com','newsweek.com','newsnationnow.com','thehill.com','upi.com',
-    'foreignpolicy.com','fortune.com','economist.com','statista.com'
+    'foreignpolicy.com','fortune.com','economist.com'
   ],
   'lean-right': [
     'thedispatch.com','theepochtimes.com','foxbusiness.com','justthenews.com',
@@ -42,7 +51,7 @@ const BIAS_BUCKETS = {
   ]
 };
 
-// ---- Reliability seeds ----
+/* -------- Reliability (seed) -------- */
 const RELIABILITY_SCORES = {
   'apnews.com': 85, 'reuters.com': 88, 'bbc.com': 80, 'bbc.co.uk': 80,
   'nytimes.com': 78, 'wsj.com': 82, 'washingtonpost.com': 78, 'npr.org': 84,
@@ -57,10 +66,7 @@ const RELIABILITY_SCORES = {
 };
 const DEFAULT_RELIABILITY = 50;
 
-const ALLOWED_CATEGORIES = new Set([
-  'general','world','nation','business','technology','entertainment','sports','science','health'
-]);
-
+/* -------- Helpers -------- */
 const STOP = new Set(['the','a','an','to','of','in','on','and','or','as','for','at','by','with','from','about','amid','over','after','before','into','out','up','down']);
 
 function parseHostParts(u) {
@@ -101,15 +107,60 @@ function titleKey(s) {
   return uniq.sort().join('-');
 }
 
-const BUCKETS = ['left','lean-left','center','lean-right','right'];
-const ADJACENT = {
-  left: ['lean-left','center','lean-right','right'],
-  'lean-left': ['left','center','lean-right','right'],
-  center: ['lean-left','lean-right','left','right'],
-  'lean-right': ['right','center','lean-left','left'],
-  right: ['lean-right','center','lean-left','left']
-};
+async function call(url) {
+  const resp = await fetch(url);
+  if (resp.status === 403) throw new Error('403 quota/plan restriction from GNews');
+  if (!resp.ok) {
+    const txt = await resp.text().catch(()=> '');
+    throw new Error(`GNews ${resp.status} ${resp.statusText} ${txt}`.trim());
+  }
+  return resp.json();
+}
 
+function normArticle(a) {
+  const primaryUrl = a?.source?.url || a?.url || '';
+  return {
+    title: a?.title || 'No title',
+    description: a?.description || 'No description',
+    content: a?.content || a?.description || 'No content available',
+    url: a?.url,
+    image: a?.image,
+    publishedAt: a?.publishedAt,
+    source: { name: a?.source?.name || 'Unknown Source', url: a?.source?.url || '' },
+    bias: detectBiasByUrl(primaryUrl) || '',
+    reliabilityScore: reliabilityByUrl(primaryUrl)
+  };
+}
+
+function dedupeKeepNewest(list) {
+  const byKey = new Map();
+  for (const a of list) {
+    const k = a?.url || a?.source?.url || a?.title || '';
+    if (!k) continue;
+    const prev = byKey.get(k);
+    if (!prev) byKey.set(k, a);
+    else {
+      const tPrev = Date.parse(prev.publishedAt || 0);
+      const tNow  = Date.parse(a.publishedAt || 0);
+      if (tNow > tPrev) byKey.set(k, a);
+    }
+  }
+  return [...byKey.values()];
+}
+
+function partitionByBias(articles) {
+  const bins = Object.fromEntries(BUCKETS.map(b => [b, []]));
+  const unknown = [];
+  for (const a of articles) {
+    if (BUCKETS.includes(a.bias)) bins[a.bias].push(a);
+    else unknown.push(a);
+  }
+  for (const b of BUCKETS) bins[b].sort((x,y) => new Date(y.publishedAt||0) - new Date(x.publishedAt||0));
+  unknown.sort((x,y) => new Date(y.publishedAt||0) - new Date(x.publishedAt||0));
+  return { bins, unknown };
+}
+
+/* -------- Main handler -------- */
 exports.handler = async function (event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -142,7 +193,7 @@ exports.handler = async function (event) {
 
     if (!ALLOWED_CATEGORIES.has(category)) category = '';
 
-    // Cache key
+    /* ---- Cache ---- */
     const cacheKey = JSON.stringify({
       q, lang, country, maxReq, category, expand, from, to,
       bias: doBiasFilter ? bias : '', minReliability, balanced, clusterMode
@@ -152,30 +203,21 @@ exports.handler = async function (event) {
       return { statusCode: 200, headers: { ...headers, 'X-Cache': 'HIT' }, body: JSON.stringify(cached.data) };
     }
 
-    // ----- Fetch helpers -----
+    /* ---- Build base params ---- */
     const endpointFor = (cat) => (cat ? 'top-headlines' : 'search');
     const baseParams = (cat) => {
       const s = new URLSearchParams();
       s.append('apikey', API_KEY);
       s.append('lang', lang);
       s.append('expand', expand);
-      if (q) s.append('q', q);           // ✅ always include q (topic search fix)
+      if (q) s.append('q', q);           // ✅ topic search fix
       if (cat) s.append('topic', cat);
       if (country) s.append('country', country);
       return s;
     };
 
-    async function callGNews(url) {
-      const resp = await fetch(url);
-      if (resp.status === 403) throw new Error('403 quota/plan restriction from GNews');
-      if (!resp.ok) {
-        const txt = await resp.text().catch(()=> '');
-        throw new Error(`GNews ${resp.status} ${resp.statusText} ${txt}`.trim());
-      }
-      return resp.json();
-    }
-
-    async function fetchPaged(cat, pages, perPage) {
+    /* ---- Fetch helpers ---- */
+    async function fetchPages(cat, pages, perPage) {
       const endpoint = endpointFor(cat);
       const tasks = [];
       for (let p = 1; p <= pages; p++) {
@@ -184,128 +226,137 @@ exports.handler = async function (event) {
         for (const [k,v] of b.entries()) u.searchParams.append(k, v);
         u.searchParams.append('max', String(perPage));
         u.searchParams.append('page', String(p));
-        tasks.push(callGNews(u.toString()).catch(()=>({ articles: [] })));
+        tasks.push(call(u.toString()).catch(()=>({ articles: [] })));
       }
       const results = await Promise.all(tasks);
       return results.flatMap(r => Array.isArray(r.articles) ? r.articles : []);
     }
 
-    // Strategy
-    const overFetchFactor = balanced ? 3 : (doBiasFilter || minReliability > 0 || clusterMode === 'title' ? 1.5 : 1);
+    // Site-targeted search to backfill a domain
+    async function fetchForDomain(domain, pages = 1, perPage = 20) {
+      const u = new URL(`${API_BASE}/search`);
+      const s = new URLSearchParams();
+      s.append('apikey', API_KEY);
+      s.append('lang', lang);
+      s.append('expand', expand);
+      // site:domain query to nudge GNews towards that outlet
+      const siteQ = q ? `${q} site:${domain}` : `site:${domain}`;
+      s.append('q', siteQ);
+      if (country) s.append('country', country);
+      s.append('max', String(Math.min(PER_REQ_CAP, perPage)));
+      const tasks = [];
+      for (let p = 1; p <= pages; p++) {
+        const url = new URL(u);
+        for (const [k,v] of s.entries()) url.searchParams.append(k, v);
+        url.searchParams.append('page', String(p));
+        tasks.push(call(url.toString()).catch(()=>({ articles: [] })));
+      }
+      const results = await Promise.all(tasks);
+      return results.flatMap(r => Array.isArray(r.articles) ? r.articles : []);
+    }
+
+    /* ---- Strategy ---- */
+    const overFetchFactor =
+      balanced ? 3
+      : (doBiasFilter || minReliability > 0 || clusterMode === 'title' ? 1.5 : 1);
+
     const rawTarget = Math.min(100, Math.max(maxReq, Math.ceil(maxReq * overFetchFactor)));
 
-    async function firstPage(cat) {
-      const endpoint = endpointFor(cat);
-      const u = new URL(`${API_BASE}/${endpoint}`);
-      const b = baseParams(cat);
-      for (const [k,v] of b.entries()) u.searchParams.append(k, v);
-      u.searchParams.append('max', String(Math.min(PER_REQ_CAP, rawTarget)));
-      u.searchParams.append('page', '1');
-      const r = await callGNews(u.toString());
-      const arr = Array.isArray(r.articles) ? r.articles : [];
-      const effectivePerPage = arr.length;
-      const totalArticlesAPI = typeof r.totalArticles === 'number' ? r.totalArticles : undefined;
-      return { arr, effectivePerPage, totalArticlesAPI };
+    // Primary pool (topic-respecting)
+    const primary = await fetchPages(category, Math.ceil(rawTarget / PER_REQ_CAP) || 1, Math.min(PER_REQ_CAP, rawTarget));
+
+    // Supplemental general pool to add variety (light)
+    let supplemental = [];
+    if (balanced && !category) {
+      const picks = ['world','business','technology'];
+      const tasks = picks.map(t => fetchPages(t, 1, 20));
+      const res = await Promise.all(tasks);
+      supplemental = res.flat();
     }
 
-    const { arr: firstArr, effectivePerPage } = await firstPage(category);
-    const perPage = Math.max(1, effectivePerPage || 10);
-    const pagesNeeded = Math.ceil(rawTarget / perPage);
-    const primaryPool = firstArr.concat(
-      await fetchPaged(category, Math.max(0, pagesNeeded - 1), Math.min(PER_REQ_CAP, rawTarget))
-    );
-
-    // Supplemental pool when balanced ON
-    let supplementalPool = [];
-    if (balanced) {
-      const topics = category ? [category] : ['general','world','business','technology','science','health','entertainment'];
-      const seed = new Date().getUTCDate() % topics.length;
-      const pick = [];
-      for (let i = 0; i < Math.min(3, topics.length); i++) pick.push(topics[(seed + i) % topics.length]);
-      const supPages = 2;
-      const supPerPage = Math.min(PER_REQ_CAP, 20);
-      const tasks = pick.map(t => fetchPaged(t, supPages, supPerPage));
-      const results = await Promise.all(tasks);
-      supplementalPool = results.flat();
-    }
-
-    // Merge & dedupe
-    const seen = new Set();
-    const collected = [];
-    for (const a of [...primaryPool, ...supplementalPool]) {
-      const key = a?.url || a?.source?.url || a?.title || '';
-      if (key && !seen.has(key)) { seen.add(key); collected.push(a); }
-      if (collected.length >= 400) break;
-    }
-
-    // Normalize + annotate
-    let articles = collected.map(a => {
-      const primaryUrl = a.source?.url || a.url || '';
-      return {
-        title: a.title || 'No title',
-        description: a.description || 'No description',
-        content: a.content || a.description || 'No content available',
-        url: a.url,
-        image: a.image,
-        publishedAt: a.publishedAt,
-        source: { name: a.source?.name || 'Unknown Source', url: a.source?.url || '' },
-        bias: detectBiasByUrl(primaryUrl) || '',
-        reliabilityScore: reliabilityByUrl(primaryUrl)
-      };
-    });
+    // Merge -> normalize -> local filters
+    let pool = dedupeKeepNewest([...primary, ...supplemental]).map(normArticle);
 
     // Time window
     if (from || to) {
       const fromT = from ? Date.parse(from) : Number.NEGATIVE_INFINITY;
       const toT   = to   ? Date.parse(to)   : Number.POSITIVE_INFINITY;
-      articles = articles.filter(a => {
+      pool = pool.filter(a => {
         const t = Date.parse(a.publishedAt || '');
         return isNaN(t) ? true : (t >= fromT && t <= toT);
       });
     }
-
-    // Reliability floor
-    if (minReliability > 0) {
-      articles = articles.filter(a => (a.reliabilityScore ?? DEFAULT_RELIABILITY) >= minReliability);
-    }
-
-    // Cluster similar titles
+    // Reliability
+    if (minReliability > 0) pool = pool.filter(a => (a.reliabilityScore ?? DEFAULT_RELIABILITY) >= minReliability);
+    // Cluster
     if (clusterMode === 'title') {
       const seenKeys = new Set();
-      const out = [];
-      for (const a of articles) {
+      pool = pool.filter(a => {
         const k = titleKey(a.title);
-        if (!seenKeys.has(k)) { seenKeys.add(k); out.push(a); }
+        if (seenKeys.has(k)) return false;
+        seenKeys.add(k); return true;
+      });
+    }
+
+    /* -------- Bucket-targeted backfill when balanced ON -------- */
+    if (balanced) {
+      const targetPerBucket = Math.ceil(maxReq / BUCKETS.length); // equal target
+      const { bins } = partitionByBias(pool);
+      const need = Object.fromEntries(BUCKETS.map(b => [b, Math.max(0, targetPerBucket - (bins[b]?.length || 0))]));
+
+      const backfillTasks = [];
+      for (const b of BUCKETS) {
+        if (need[b] <= 0) continue;
+        const domains = (BIAS_BUCKETS[b] || []).slice(0, 10); // cap to avoid explosion
+        // 2 pages * 20 per domain across first few domains
+        const perDomainPages = 2;
+        const perDomainMax   = 20;
+        for (const d of domains) {
+          backfillTasks.push(fetchForDomain(d, perDomainPages, perDomainMax));
+          // Stop queuing once we've queued roughly what's needed * 2 (buffer)
+          if (backfillTasks.length * perDomainPages * perDomainMax >= need[b] * 2 * PER_REQ_CAP) break;
+        }
       }
-      articles = out;
+
+      if (backfillTasks.length) {
+        const results = await Promise.all(backfillTasks);
+        const extra = dedupeKeepNewest(results.flat()).map(normArticle);
+        // Keep only those that actually fall into a recognized bucket
+        const extraByBias = extra.filter(a => BUCKETS.includes(a.bias));
+        // Merge and re-dedupe with existing pool
+        pool = dedupeKeepNewest([...pool, ...extraByBias]);
+      }
     }
 
-    // Bias filter OR balanced sampler
+    /* ---- Final selection ---- */
+    let articles;
     if (doBiasFilter) {
-      articles = articles.filter(a => a.bias === bias);
+      articles = pool.filter(a => a.bias === bias).slice(0, maxReq);
     } else if (balanced) {
-      articles = balancedSampler(articles, maxReq);
+      articles = balancedSampler(pool, maxReq);
+    } else {
+      // default: newest first
+      articles = pool
+        .sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0))
+        .slice(0, maxReq);
     }
 
-    // Final trim
-    articles = articles.slice(0, maxReq);
-
-    const payload = basePayload({
+    const payload = {
+      totalArticles: articles.length,
       articles,
+      fetchedAt: new Date().toISOString(),
       endpoint: (category ? 'top-headlines' : 'search'),
-      q, lang, country, maxReq, category, expand, from, to,
-      bias: doBiasFilter ? bias : (balanced ? 'balanced' : 'default'),
-      doBiasFilter, minReliability, balanced, clusterMode
-    });
+      parameters: {
+        q, lang, country, max: maxReq, category, expand, from, to,
+        bias: doBiasFilter ? bias : (balanced ? 'balanced' : 'default'),
+        minReliability, cluster: clusterMode || 'off', balanced: !!balanced
+      }
+    };
 
     cache.set(cacheKey, { data: payload, timestamp: Date.now() });
     if (cache.size > 120) cache.delete(cache.keys().next().value);
 
-    return {
-      statusCode: 200,
-      headers: { ...headers, 'X-Cache': 'MISS' },
-      body: JSON.stringify(payload)
-    };
+    return { statusCode: 200, headers: { ...headers, 'X-Cache': 'MISS' }, body: JSON.stringify(payload) };
 
   } catch (err) {
     const body = JSON.stringify({ error: 'Internal server error', message: err.message, timestamp: new Date().toISOString() });
@@ -313,92 +364,66 @@ exports.handler = async function (event) {
   }
 };
 
-// ---------- balanced sampler ----------
+/* ---------- Sampler that respects targets and avoids CL dominance ---------- */
 function balancedSampler(pool, maxReq) {
-  const BUCKETS = ['left','lean-left','center','lean-right','right'];
-  const ADJACENT = {
-    left: ['lean-left','center','lean-right','right'],
-    'lean-left': ['left','center','lean-right','right'],
-    center: ['lean-left','lean-right','left','right'],
-    'lean-right': ['right','center','lean-left','left'],
-    right: ['lean-right','center','lean-left','left']
-  };
+  const { bins, unknown } = partitionByBias(pool);
+  const target = Math.ceil(maxReq / BUCKETS.length);
 
-  const bins = Object.fromEntries(BUCKETS.map(b => [b, []]));
-  const unknown = [];
-  for (const a of pool) {
-    if (BUCKETS.includes(a.bias)) bins[a.bias].push(a);
-    else unknown.push(a);
-  }
-  for (const b of BUCKETS) bins[b].sort((x,y) => new Date(y.publishedAt||0) - new Date(x.publishedAt||0));
-  unknown.sort((x,y) => new Date(y.publishedAt||0) - new Date(x.publishedAt||0));
+  // Queues per bucket
+  const queues = BUCKETS.map(b => bins[b] || []);
 
-  const perBucket = Math.ceil(maxReq / BUCKETS.length);
-  const picked = [];
+  // First pass: round-robin pick up to target from each bucket
+  const picks = [];
   const used = new Set();
-
-  for (const b of BUCKETS) {
-    for (const a of bins[b]) {
-      if (used.has(a.url)) continue;
-      picked.push(a); used.add(a.url);
-      if (picked.filter(x => x.bias===b).length >= perBucket) break;
-    }
-  }
-
-  for (const b of BUCKETS) {
-    while (picked.filter(x => x.bias===b).length < perBucket) {
-      let filled = false;
-      for (const adj of ADJACENT[b]) {
-        const next = bins[adj].find(x => !used.has(x.url));
-        if (next) { picked.push(next); used.add(next.url); filled = true; break; }
+  for (let round = 0; round < target; round++) {
+    for (let i = 0; i < BUCKETS.length; i++) {
+      const q = queues[i];
+      while (q && q.length) {
+        const a = q.shift();
+        const k = a.url;
+        if (!used.has(k)) { picks.push(a); used.add(k); break; }
       }
-      if (!filled) break;
     }
+    if (picks.length >= maxReq) break;
   }
 
-  if (picked.length < maxReq) {
-    for (const a of unknown) {
-      if (used.has(a.url)) continue;
-      picked.push(a); used.add(a.url);
-      if (picked.length >= maxReq) break;
+  // Second pass: fill remaining slots favoring still under-target buckets
+  function bucketCount(bias) { return picks.filter(a => a.bias === bias).length; }
+  while (picks.length < maxReq) {
+    // Which buckets are still below target?
+    const under = BUCKETS.filter(b => bucketCount(b) < target);
+    if (!under.length) break;
+
+    let added = false;
+    for (const b of under) {
+      const q = (bins[b] || []);
+      while (q.length) {
+        const a = q.shift();
+        const k = a.url;
+        if (!used.has(k)) { picks.push(a); used.add(k); added = true; break; }
+      }
+      if (picks.length >= maxReq) break;
     }
+    if (!added) break;
   }
-  if (picked.length < maxReq) {
-    const rest = pool.filter(a => !used.has(a.url))
+
+  // Third pass: unknowns (if any)
+  for (const a of unknown) {
+    if (picks.length >= maxReq) break;
+    const k = a.url;
+    if (!used.has(k)) { picks.push(a); used.add(k); }
+  }
+
+  // Final pass: anything else newest-first
+  if (picks.length < maxReq) {
+    const rest = pool
+      .filter(a => !used.has(a.url))
       .sort((x,y) => new Date(y.publishedAt||0) - new Date(x.publishedAt||0));
     for (const a of rest) {
-      picked.push(a); if (picked.length >= maxReq) break;
+      picks.push(a);
+      if (picks.length >= maxReq) break;
     }
   }
 
-  // Interleave by bucket to avoid clumps
-  const queues = BUCKETS.map(b => picked.filter(a => a.bias === b));
-  const misc = picked.filter(a => !BUCKETS.includes(a.bias));
-  const out = [];
-  let i = 0;
-  while (out.length < Math.min(maxReq, picked.length)) {
-    const q = queues[i % queues.length];
-    if (q && q.length) out.push(q.shift());
-    else if (misc.length) out.push(misc.shift());
-    i++;
-    if (i > maxReq * 5) break;
-  }
-  return out.slice(0, maxReq);
+  return picks.slice(0, maxReq);
 }
-
-function basePayload ({
-  articles, endpoint, q, lang, country, maxReq, category, expand, from, to,
-  bias, doBiasFilter, minReliability, balanced, clusterMode
-}) {
-  return {
-    totalArticles: articles.length,
-    articles,
-    fetchedAt: new Date().toISOString(),
-    endpoint,
-    parameters: { q, lang, country, max: maxReq, category, expand, from, to,
-      bias, minReliability, cluster: clusterMode || 'off', balanced: !!balanced
-    }
-  };
-}
-
-
