@@ -74,15 +74,16 @@
     .spectrumeter{background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:12px}
     .spec-row{display:flex;flex-direction:column;gap:10px}
     .spec-svg{width:100%;height:120px}
-    /* Spectrumeter tick labels: match Bias labels (small text under circles) */
-    .spectrumeter .spec-ticks{
-      font-family: inherit;
-      font-size: 12px;        /* align with small bias labels */
-      font-weight: 400;       /* same weight as the bias labels */
-      fill: var(--text-color);/* same color baseline */
-    }
     /* CSS transform is not used for the needle anymore (we rotate via SVG attribute) */
     .see-more{align-self:flex-start;background:#f0f6ff;color:#2054d2;padding:6px 8px;border-radius:8px;font-weight:600}
+    /* Spectrumeter tick labels: match Bias labels (small text under circles) */
+.spectrumeter .spec-ticks {
+  font-family: inherit;
+  font-size: 12px;       /* same as <small> default in your UI */
+  font-weight: 400;      /* same weight as the bias labels */
+  fill: var(--text-color); /* same color as general text (bias labels inherit this) */
+}
+
 
     .spec-details{display:none;margin-top:8px}
     .spec-details.open{display:block}
@@ -161,7 +162,7 @@
     <div class="container">
       <div class="logo"><h1>Spectrum <span>News</span></h1></div>
 
-    <div class="search-bar">
+      <div class="search-bar">
         <form id="search-form" class="search-form" autocomplete="off">
           <input id="search-input" type="text" placeholder="Search news…" value="latest news" />
           <button class="search-btn" type="submit">Search</button>
@@ -231,19 +232,23 @@
                     <stop offset="100%" stop-color="#e94b4b"/>
                   </linearGradient>
                 </defs>
+                <!-- Arc lifted to y=92 -->
                 <path d="M20,92 A90,90 0 0,1 200,92" fill="none" stroke="#eee" stroke-width="16" stroke-linecap="round"/>
                 <path d="M20,92 A90,90 0 0,1 200,92" fill="none" stroke="url(#specGradient)" stroke-width="16" stroke-linecap="round"/>
                 <!-- Labels -->
-                <g class="spec-ticks" text-anchor="middle">
-                  <text x="32"  y="116">Left</text>
-                  <text x="76"  y="116">CL</text>
-                  <text x="110" y="116">Center</text>
-                  <text x="144" y="116">CR</text>
-                  <text x="188" y="116">Right</text>
-                </g>
-                <!-- Needle -->
+<g class="spec-ticks" text-anchor="middle">
+  <text x="32"  y="116">Left</text>
+  <text x="76"  y="116">CL</text>
+  <text x="110" y="116">Center</text>
+  <text x="144" y="116">CR</text>
+  <text x="188" y="116">Right</text>
+</g>
+
+                <!-- Needle pivot at (110,92). We'll rotate this <g> with an SVG transform attribute -->
                 <g id="spec-needle">
+                  <!-- pivot disc -->
                   <circle cx="110" cy="92" r="6" fill="#444"/>
+                  <!-- needle arm pointing to the right at 0°; rotation will pivot around 110,92 -->
                   <line x1="110" y1="92" x2="170" y2="78" stroke="#444" stroke-width="2" stroke-linecap="round"/>
                 </g>
               </svg>
@@ -361,8 +366,7 @@
           opt.addEventListener('click',()=>{
             document.querySelectorAll('#bias-filter .bias-option').forEach(x=>{x.classList.remove('active');x.setAttribute('aria-pressed','false')});
             opt.classList.add('active'); opt.setAttribute('aria-pressed','true');
-            this.currentBias=opt.dataset.bias||'default';
-            this.debouncedLoadNews();
+            this.currentBias=opt.dataset.bias||'default'; this.debouncedLoadNews();
           });
         });
 
@@ -376,8 +380,8 @@
             if(mode==='1') this.viewRoot.classList.add('cards-1');
             else if(mode==='2') this.viewRoot.classList.add('cards-2');
             else if(mode==='3') this.viewRoot.classList.add('cards-3');
-            else if(mode==='lr') this.viewRoot.classList.add('cards-2');
-            this.renderArticles(this.lastArticles);
+            else if(mode==='lr') this.viewRoot.classList.add('cards-2'); // use 2-up grid
+            this.renderArticles(this.lastArticles); // instant reflow (no refetch)
           });
         });
 
@@ -410,17 +414,7 @@
 
           const params=new URLSearchParams({ q, lang, max, expand:'content' });
           if(this.currentCategory) params.set('category', this.currentCategory);
-
-          // --- CHANGE #3: bias vs balanced handling ---
-          const bias = this.currentBias || 'default';
-          if (bias !== 'default') {
-            params.set('bias', bias);
-          }
-          const balancedEl = document.getElementById('balanced-toggle');
-          if (bias === 'default' && balancedEl.checked) {
-            params.set('balanced','1');
-          }
-          // ------------------------------------------
+          if(this.currentBias && this.currentBias!=='default') params.set('bias', this.currentBias);
 
           const tr=document.getElementById('time-range').value;
           if(tr!=='any'){
@@ -430,6 +424,7 @@
 
           const minReliability=parseInt(document.getElementById('reliability').value,10)||0;
           if(minReliability>0) params.set('minReliability', String(minReliability));
+          if(document.getElementById('balanced-toggle').checked) params.set('balanced','1');
           if(document.getElementById('cluster-toggle').checked) params.set('cluster','title');
 
           const res=await fetch(`${this.apiEndpoint}?${params.toString()}`);
@@ -496,21 +491,26 @@
         const counts={left:0,'lean-left':0,center:0,'lean-right':0,right:0,unknown:0};
         for(const a of (articles||[])){ counts[a.bias] != null ? counts[a.bias]++ : counts.unknown++; }
 
+        // Use only labeled articles to compute direction (ignore Unknown)
         const labeledTotal = buckets.reduce((s,b)=>s+counts[b],0);
 
+        // target angle is a weighted average across buckets, not just the mode
+        // positions mapped across the semicircle Left(-180) .. Right(0)
         const pos = { left:-180, 'lean-left':-135, center:-90, 'lean-right':-45, right:0 };
 
-        let angle = -90;
+        let angle = -90; // default Center
         if(labeledTotal > 0){
           let sum = 0;
           for(const b of buckets) sum += (counts[b] / labeledTotal) * pos[b];
           angle = sum;
         }
 
+        // Smoothly animate to new angle (lightweight tween)
         const needleEl = document.getElementById('spec-needle');
         if(needleEl){
           const prev = parseFloat(needleEl.dataset.angle || '-90');
-          const duration = 180;
+          const steps = 12, duration = 180; // ~180ms
+          let t = 0;
           const start = performance.now();
           const animate = (now)=>{
             const p = Math.min(1,(now-start)/duration);
@@ -522,6 +522,7 @@
           requestAnimationFrame(animate);
         }
 
+        // Details bars
         const total = (articles||[]).length || 1;
         const bars=document.getElementById('spec-bars');
         const mkRow=(name,cls,p)=>`
@@ -597,5 +598,3 @@
   </script>
 </body>
 </html>
-
-
