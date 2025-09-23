@@ -179,7 +179,7 @@
     .thumb-frame {
       position: relative;
       width: 100%;
-      aspect-ratio: 16 / 9;     /* default for grid views */
+      aspect-ratio: 16 / 9;
       background: #f2f2f2;
       overflow: hidden;
       border-radius: 12px;
@@ -190,7 +190,7 @@
       width: 100%;
       height: 100%;
       display: block;
-      object-fit: cover;        /* cover in grid views */
+      object-fit: cover;
       object-position: center;
       -webkit-user-select: none;
       user-select: none;
@@ -203,14 +203,14 @@
     .cards-1 .article-card .thumb-frame{
       width: 100%;
       margin: 0;
-      aspect-ratio: 2 / 1;          /* slightly shorter than 16:9 */
+      aspect-ratio: 2 / 1;
       border-radius: 12px;
       overflow: hidden;
       background: transparent;
     }
     .cards-1 .article-card .thumb-frame img.thumb{
-      object-fit: cover !important;  /* fill, no letterboxing */
-      object-position: center 35%;   /* bias crop upward a bit */
+      object-fit: cover !important;
+      object-position: center 35%;
       background: transparent !important;
     }
 
@@ -241,6 +241,21 @@
       header .container { flex-direction: column; align-items: stretch; }
       .search-form { width: 100%; }
       .cards-2 #news-container, .cards-3 #news-container { grid-template-columns: 1fr; }
+    }
+
+    /* ===== Left vs Right layout (same visual as 2-up) ===== */
+    #news-container.lr-two {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+    #news-container.lr-two .lr-col {
+      display: grid;
+      grid-auto-rows: min-content;
+      gap: 18px;
+    }
+    @media (max-width: 1024px) {
+      #news-container.lr-two { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -274,6 +289,8 @@
             <option value="au">Australia</option>
             <option value="in">India</option>
           </select>
+
+          <!-- Language filter removed (always English) -->
 
           <h3>Articles</h3>
           <select id="max-select" class="select">
@@ -366,6 +383,8 @@
           <button class="view-option" data-view="1" role="tab" aria-selected="false">List</button>
           <button class="view-option active" data-view="2" role="tab" aria-selected="true">2-up</button>
           <button class="view-option" data-view="3" role="tab" aria-selected="false">3-up</button>
+          <!-- NEW: Left vs Right -->
+          <button class="view-option" data-view="lr" role="tab" aria-selected="false">Left vs Right</button>
         </div>
 
         <div id="error" class="error" style="display:none;"></div>
@@ -391,6 +410,7 @@
         this.currentBias = 'default';
         this.autoRefreshMs = 30 * 60 * 1000;
         this.viewRoot = document.body;
+        this.viewMode = '2'; // '1' | '2' | '3' | 'lr'
         this.debouncedLoadNews = this.debounce(() => this.loadNews(), 400);
         this.bindUI();
         this.startAutoRefresh();
@@ -410,8 +430,8 @@
           this.loadNews();
         });
 
-        // Basic selects (debounced)
-        ['country-select','language-select','max-select','time-range']
+        // Basic selects (debounced) — language-select removed
+        ['country-select','max-select','time-range']
           .forEach(id => document.getElementById(id).addEventListener('change', () => this.debouncedLoadNews()));
 
         // Reliability slider on change (not every pixel)
@@ -443,15 +463,23 @@
           });
         });
 
-        // View options
+        // View options (adds 'lr' mode)
         const viewBtns = document.querySelectorAll('.view-option');
         viewBtns.forEach(btn => {
           btn.addEventListener('click', () => {
             viewBtns.forEach(x => { x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
             btn.classList.add('active'); btn.setAttribute('aria-selected','true');
+
             const mode = btn.dataset.view;
+            this.viewMode = mode;
+
             this.viewRoot.classList.remove('cards-1','cards-2','cards-3');
-            this.viewRoot.classList.add(`cards-${mode}`);
+            if (mode === '1') this.viewRoot.classList.add('cards-1');
+            else if (mode === '2') this.viewRoot.classList.add('cards-2');
+            else if (mode === '3') this.viewRoot.classList.add('cards-3');
+            else if (mode === 'lr') this.viewRoot.classList.add('cards-2'); // same sizing as 2-up
+
+            this.debouncedLoadNews();
           });
         });
       }
@@ -472,8 +500,10 @@
         try {
           const q = (document.getElementById('search-input').value || 'latest news').trim();
           const country = document.getElementById('country-select').value;
-          const lang = document.getElementById('language-select').value;
           const max = document.getElementById('max-select').value;
+
+          // Always English
+          const lang = 'en';
 
           const params = new URLSearchParams({ q, country, lang, max, expand: 'content' });
           if (this.currentCategory) params.set('category', this.currentCategory);
@@ -524,14 +554,21 @@
 
       renderArticles(articles) {
         const el = document.getElementById('news-container');
+
         if (!articles || !articles.length) {
+          el.classList.remove('lr-two');
           el.innerHTML = `<div class="loading" style="padding:36px;">No articles found. Try a different search or broaden the time range.</div>`;
           return;
         }
 
+        if (this.viewMode === 'lr') {
+          this.renderLeftRight(articles);
+          return;
+        }
+
+        el.classList.remove('lr-two');
         el.innerHTML = articles.map(a => this.cardHTML(a)).join('');
 
-        // NEW: prioritize the first image for perceived speed
         const firstImg = el.querySelector('.thumb');
         if (firstImg) { firstImg.loading = 'eager'; firstImg.setAttribute('fetchpriority', 'high'); }
 
@@ -549,6 +586,51 @@
           });
         });
         el.querySelectorAll('.link-btn').forEach(btn => btn.addEventListener('click', (e) => e.stopPropagation()));
+      }
+
+      // NEW: Left vs Right renderer (same card UI, 2 columns)
+      renderLeftRight(articles) {
+        const container = document.getElementById('news-container');
+        container.classList.add('lr-two');
+
+        const LEFT_BIASES  = new Set(['left','lean-left']);
+        const RIGHT_BIASES = new Set(['right','lean-right']);
+        const byTimeDesc = (a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
+
+        const leftPool  = articles.filter(a => LEFT_BIASES.has(a.bias)).sort(byTimeDesc);
+        const rightPool = articles.filter(a => RIGHT_BIASES.has(a.bias)).sort(byTimeDesc);
+
+        const maxSel = parseInt(document.getElementById('max-select').value, 10) || 10;
+        const perSideTarget = Math.max(1, Math.floor(maxSel / 2));
+
+        const leftTake  = leftPool.slice(0,  perSideTarget);
+        const rightTake = rightPool.slice(0, perSideTarget);
+
+        const leftHTML  = leftTake.map(a => this.cardHTML(a)).join('');
+        const rightHTML = rightTake.map(a => this.cardHTML(a)).join('');
+
+        container.innerHTML = `
+          <div class="lr-col lr-left">${leftHTML || ''}</div>
+          <div class="lr-col lr-right">${rightHTML || ''}</div>
+        `;
+
+        container.querySelectorAll('.article-card').forEach(card => {
+          card.addEventListener('click', () => {
+            const url = card.getAttribute('data-url');
+            if (url) window.open(url, '_blank', 'noopener,noreferrer');
+          });
+          card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              const url = card.getAttribute('data-url');
+              if (url) window.open(url, '_blank', 'noopener,noreferrer');
+            }
+          });
+        });
+        container.querySelectorAll('.link-btn').forEach(btn => btn.addEventListener('click', (e) => e.stopPropagation()));
+
+        const firstImg = container.querySelector('.thumb');
+        if (firstImg) { firstImg.loading = 'eager'; firstImg.setAttribute('fetchpriority', 'high'); }
       }
 
       cardHTML(article) {
