@@ -1,17 +1,15 @@
 'use strict';
 
 /**
- * GNews API Serverless Function (balanced-view v2)
- * - Bias-aware overfetch (3× when balanced)
- * - Supplemental topic pulls (top-headlines) to widen the pool
- * - Strict 5-bucket sampler (Left, CL, Center, CR, Right) with adjacent backfill
- * - Expanded domain maps for Right/Lean-Right
+ * GNews API Serverless Function (balanced-view v2 + topic search fix)
+ * - Overfetch when balanced, supplemental pulls, strict bucket sampler, expanded right domains
+ * - ALWAYS include `q` even for top-headlines so keywords work inside topics
  */
 
 const cache = new Map();
 const CACHE_DURATION = 30 * 60 * 1000;
 const API_BASE = 'https://gnews.io/api/v4';
-const PER_REQ_CAP = 25; // Essential plan per-call cap
+const PER_REQ_CAP = 25;
 
 // ---- Bias buckets (expanded) ----
 const BIAS_BUCKETS = {
@@ -44,7 +42,7 @@ const BIAS_BUCKETS = {
   ]
 };
 
-// ---- Reliability seeds (extend as needed) ----
+// ---- Reliability seeds ----
 const RELIABILITY_SCORES = {
   'apnews.com': 85, 'reuters.com': 88, 'bbc.com': 80, 'bbc.co.uk': 80,
   'nytimes.com': 78, 'wsj.com': 82, 'washingtonpost.com': 78, 'npr.org': 84,
@@ -63,10 +61,8 @@ const ALLOWED_CATEGORIES = new Set([
   'general','world','nation','business','technology','entertainment','sports','science','health'
 ]);
 
-// Small stoplist for clustering key
 const STOP = new Set(['the','a','an','to','of','in','on','and','or','as','for','at','by','with','from','about','amid','over','after','before','into','out','up','down']);
 
-// ---------- helpers ----------
 function parseHostParts(u) {
   try {
     const hostname = new URL(u).hostname.replace(/^www\./i, '');
@@ -104,6 +100,7 @@ function titleKey(s) {
   for (const w of words) { if (!uniq.includes(w)) uniq.push(w); if (uniq.length >= 6) break; }
   return uniq.sort().join('-');
 }
+
 const BUCKETS = ['left','lean-left','center','lean-right','right'];
 const ADJACENT = {
   left: ['lean-left','center','lean-right','right'],
@@ -113,7 +110,6 @@ const ADJACENT = {
   right: ['lean-right','center','lean-left','left']
 };
 
-// ---------- Netlify handler ----------
 exports.handler = async function (event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -128,7 +124,6 @@ exports.handler = async function (event) {
   if (!API_KEY) return { statusCode: 500, headers, body: JSON.stringify({ error: 'Missing GNEWS_API_KEY env var' }) };
 
   try {
-    // ---- Params ----
     const qp = event.queryStringParameters || {};
     const q        = String(qp.q || 'latest news').trim() || 'latest news';
     const lang     = String(qp.lang || 'en');
@@ -143,11 +138,11 @@ exports.handler = async function (event) {
     const doBiasFilter = !!bias && bias !== 'default';
     const minReliability = Math.max(0, Math.min(parseInt(qp.minReliability || '0', 10) || 0, 100));
     const balanced = qp.balanced === '1';
-    const clusterMode = String(qp.cluster || '').toLowerCase(); // 'title' or ''
+    const clusterMode = String(qp.cluster || '').toLowerCase();
 
     if (!ALLOWED_CATEGORIES.has(category)) category = '';
 
-    // ---- Cache key ----
+    // Cache key
     const cacheKey = JSON.stringify({
       q, lang, country, maxReq, category, expand, from, to,
       bias: doBiasFilter ? bias : '', minReliability, balanced, clusterMode
@@ -157,15 +152,16 @@ exports.handler = async function (event) {
       return { statusCode: 200, headers: { ...headers, 'X-Cache': 'HIT' }, body: JSON.stringify(cached.data) };
     }
 
-    // ---- Fetch helpers ----
+    // ----- Fetch helpers -----
     const endpointFor = (cat) => (cat ? 'top-headlines' : 'search');
     const baseParams = (cat) => {
       const s = new URLSearchParams();
       s.append('apikey', API_KEY);
       s.append('lang', lang);
       s.append('expand', expand);
-      if (cat) { s.append('topic', cat); if (country) s.append('country', country); }
-      else { s.append('q', q); if (country) s.append('country', country); }
+      if (q) s.append('q', q);           // ✅ always include q (topic search fix)
+      if (cat) s.append('topic', cat);
+      if (country) s.append('country', country);
       return s;
     };
 
@@ -194,14 +190,10 @@ exports.handler = async function (event) {
       return results.flatMap(r => Array.isArray(r.articles) ? r.articles : []);
     }
 
-    // ---- Strategy ----
-    // 1) Primary pull based on user's selection (search or topic)
-    // 2) If balanced ON, widen the pool with supplemental top-headlines across multiple topics
-    //    so Right/Lean-Right buckets have enough candidates.
+    // Strategy
     const overFetchFactor = balanced ? 3 : (doBiasFilter || minReliability > 0 || clusterMode === 'title' ? 1.5 : 1);
     const rawTarget = Math.min(100, Math.max(maxReq, Math.ceil(maxReq * overFetchFactor)));
 
-    // First page to detect effective per-page
     async function firstPage(cat) {
       const endpoint = endpointFor(cat);
       const u = new URL(`${API_BASE}/${endpoint}`);
@@ -227,11 +219,10 @@ exports.handler = async function (event) {
     let supplementalPool = [];
     if (balanced) {
       const topics = category ? [category] : ['general','world','business','technology','science','health','entertainment'];
-      // Pull at most 3 topics to respect quota; rotate by day for variety
       const seed = new Date().getUTCDate() % topics.length;
       const pick = [];
       for (let i = 0; i < Math.min(3, topics.length); i++) pick.push(topics[(seed + i) % topics.length]);
-      const supPages = 2;            // up to 2 pages each
+      const supPages = 2;
       const supPerPage = Math.min(PER_REQ_CAP, 20);
       const tasks = pick.map(t => fetchPaged(t, supPages, supPerPage));
       const results = await Promise.all(tasks);
@@ -244,7 +235,7 @@ exports.handler = async function (event) {
     for (const a of [...primaryPool, ...supplementalPool]) {
       const key = a?.url || a?.source?.url || a?.title || '';
       if (key && !seen.has(key)) { seen.add(key); collected.push(a); }
-      if (collected.length >= 400) break; // hard cap
+      if (collected.length >= 400) break;
     }
 
     // Normalize + annotate
@@ -273,7 +264,7 @@ exports.handler = async function (event) {
       });
     }
 
-    // Reliability
+    // Reliability floor
     if (minReliability > 0) {
       articles = articles.filter(a => (a.reliabilityScore ?? DEFAULT_RELIABILITY) >= minReliability);
     }
@@ -289,19 +280,19 @@ exports.handler = async function (event) {
       articles = out;
     }
 
-    // Bias filter OR Balanced mix
+    // Bias filter OR balanced sampler
     if (doBiasFilter) {
       articles = articles.filter(a => a.bias === bias);
     } else if (balanced) {
       articles = balancedSampler(articles, maxReq);
     }
 
-    // Final trim + payload
+    // Final trim
     articles = articles.slice(0, maxReq);
 
     const payload = basePayload({
       articles,
-      endpoint: endpointFor(category),
+      endpoint: (category ? 'top-headlines' : 'search'),
       q, lang, country, maxReq, category, expand, from, to,
       bias: doBiasFilter ? bias : (balanced ? 'balanced' : 'default'),
       doBiasFilter, minReliability, balanced, clusterMode
@@ -324,14 +315,21 @@ exports.handler = async function (event) {
 
 // ---------- balanced sampler ----------
 function balancedSampler(pool, maxReq) {
-  // Split pool by bias
+  const BUCKETS = ['left','lean-left','center','lean-right','right'];
+  const ADJACENT = {
+    left: ['lean-left','center','lean-right','right'],
+    'lean-left': ['left','center','lean-right','right'],
+    center: ['lean-left','lean-right','left','right'],
+    'lean-right': ['right','center','lean-left','left'],
+    right: ['lean-right','center','lean-left','left']
+  };
+
   const bins = Object.fromEntries(BUCKETS.map(b => [b, []]));
   const unknown = [];
   for (const a of pool) {
     if (BUCKETS.includes(a.bias)) bins[a.bias].push(a);
     else unknown.push(a);
   }
-  // Sort each bin by recency
   for (const b of BUCKETS) bins[b].sort((x,y) => new Date(y.publishedAt||0) - new Date(x.publishedAt||0));
   unknown.sort((x,y) => new Date(y.publishedAt||0) - new Date(x.publishedAt||0));
 
@@ -339,28 +337,25 @@ function balancedSampler(pool, maxReq) {
   const picked = [];
   const used = new Set();
 
-  // Strict take
   for (const b of BUCKETS) {
     for (const a of bins[b]) {
       if (used.has(a.url)) continue;
       picked.push(a); used.add(a.url);
-      if (countBias(picked, b) >= perBucket) break;
+      if (picked.filter(x => x.bias===b).length >= perBucket) break;
     }
   }
 
-  // Backfill deficits with adjacent buckets first
   for (const b of BUCKETS) {
-    while (countBias(picked, b) < perBucket) {
+    while (picked.filter(x => x.bias===b).length < perBucket) {
       let filled = false;
       for (const adj of ADJACENT[b]) {
         const next = bins[adj].find(x => !used.has(x.url));
         if (next) { picked.push(next); used.add(next.url); filled = true; break; }
       }
-      if (!filled) break; // nothing left
+      if (!filled) break;
     }
   }
 
-  // Still short? Use unknowns, then any remainder by recency
   if (picked.length < maxReq) {
     for (const a of unknown) {
       if (used.has(a.url)) continue;
@@ -376,7 +371,7 @@ function balancedSampler(pool, maxReq) {
     }
   }
 
-  // Final: interleave by bucket to avoid long same-bias runs
+  // Interleave by bucket to avoid clumps
   const queues = BUCKETS.map(b => picked.filter(a => a.bias === b));
   const misc = picked.filter(a => !BUCKETS.includes(a.bias));
   const out = [];
@@ -386,13 +381,11 @@ function balancedSampler(pool, maxReq) {
     if (q && q.length) out.push(q.shift());
     else if (misc.length) out.push(misc.shift());
     i++;
-    if (i > maxReq * 5) break; // safety
+    if (i > maxReq * 5) break;
   }
   return out.slice(0, maxReq);
 }
-function countBias(arr, b) { return arr.reduce((n,a)=> n + (a.bias===b), 0); }
 
-// ---------- payload ----------
 function basePayload ({
   articles, endpoint, q, lang, country, maxReq, category, expand, from, to,
   bias, doBiasFilter, minReliability, balanced, clusterMode
