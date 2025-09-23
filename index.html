@@ -74,7 +74,7 @@
     .spectrumeter{background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:12px}
     .spec-row{display:flex;flex-direction:column;gap:10px}
     .spec-svg{width:100%;height:120px}
-    .needle{transform-origin:110px 92px;transition:transform .35s ease}
+    /* CSS transform is not used for the needle anymore (we rotate via SVG attribute) */
     .see-more{align-self:flex-start;background:#f0f6ff;color:#2054d2;padding:6px 8px;border-radius:8px;font-weight:600}
 
     .spec-details{display:none;margin-top:8px}
@@ -169,9 +169,6 @@
       <aside class="sidebar">
         <section class="filter-section">
           <h2>Filters</h2>
-
-          <!-- Country & Language removed -->
-
           <h3>Articles</h3>
           <select id="max-select" class="select">
             <option value="10">10 articles</option>
@@ -230,7 +227,7 @@
                 <!-- Arc lifted to y=92 -->
                 <path d="M20,92 A90,90 0 0,1 200,92" fill="none" stroke="#eee" stroke-width="16" stroke-linecap="round"/>
                 <path d="M20,92 A90,90 0 0,1 200,92" fill="none" stroke="url(#specGradient)" stroke-width="16" stroke-linecap="round"/>
-                <!-- Labels a bit lower -->
+                <!-- Labels -->
                 <g font-size="10" fill="#666" text-anchor="middle">
                   <text x="32"  y="116">Left</text>
                   <text x="76"  y="116">CL</text>
@@ -238,10 +235,12 @@
                   <text x="144" y="116">CR</text>
                   <text x="188" y="116">Right</text>
                 </g>
-                <!-- Needle pivot moved to cy=92 -->
-                <circle cx="110" cy="92" r="6" fill="#444"/>
-                <g class="needle" id="spec-needle">
-                  <polygon points="110,92 106,92 170,78" fill="#444"/>
+                <!-- Needle pivot at (110,92). We'll rotate this <g> with an SVG transform attribute -->
+                <g id="spec-needle">
+                  <!-- pivot disc -->
+                  <circle cx="110" cy="92" r="6" fill="#444"/>
+                  <!-- needle arm pointing to the right at 0°; rotation will pivot around 110,92 -->
+                  <line x1="110" y1="92" x2="170" y2="78" stroke="#444" stroke-width="2" stroke-linecap="round"/>
                 </g>
               </svg>
 
@@ -373,7 +372,7 @@
             else if(mode==='2') this.viewRoot.classList.add('cards-2');
             else if(mode==='3') this.viewRoot.classList.add('cards-3');
             else if(mode==='lr') this.viewRoot.classList.add('cards-2'); // use 2-up grid
-            this.renderArticles(this.lastArticles); // instant
+            this.renderArticles(this.lastArticles); // instant reflow (no refetch)
           });
         });
 
@@ -482,20 +481,40 @@
         const buckets=['left','lean-left','center','lean-right','right'];
         const counts={left:0,'lean-left':0,center:0,'lean-right':0,right:0,unknown:0};
         for(const a of (articles||[])){ counts[a.bias] != null ? counts[a.bias]++ : counts.unknown++; }
-        const total=(articles||[]).length||1;
 
-        // mode bucket
-        let maxIdx=0,maxVal=-1;
-        buckets.forEach((b,i)=>{ if(counts[b]>maxVal){ maxVal=counts[b]; maxIdx=i; } });
+        // Use only labeled articles to compute direction (ignore Unknown)
+        const labeledTotal = buckets.reduce((s,b)=>s+counts[b],0);
 
-        // Left→Right across semicircle: -180..0°
-        const needleEl=document.getElementById('spec-needle');
-        if(needleEl){
-          const angles=[-180,-135,-90,-45,0];
-          needleEl.style.transform=`rotate(${angles[maxIdx]}deg)`;
+        // target angle is a weighted average across buckets, not just the mode
+        // positions mapped across the semicircle Left(-180) .. Right(0)
+        const pos = { left:-180, 'lean-left':-135, center:-90, 'lean-right':-45, right:0 };
+
+        let angle = -90; // default Center
+        if(labeledTotal > 0){
+          let sum = 0;
+          for(const b of buckets) sum += (counts[b] / labeledTotal) * pos[b];
+          angle = sum;
         }
 
-        // Details bars only (chips removed)
+        // Smoothly animate to new angle (lightweight tween)
+        const needleEl = document.getElementById('spec-needle');
+        if(needleEl){
+          const prev = parseFloat(needleEl.dataset.angle || '-90');
+          const steps = 12, duration = 180; // ~180ms
+          let t = 0;
+          const start = performance.now();
+          const animate = (now)=>{
+            const p = Math.min(1,(now-start)/duration);
+            const a = prev + (angle - prev) * p;
+            needleEl.setAttribute('transform', `rotate(${a} 110 92)`);
+            if(p < 1) requestAnimationFrame(animate);
+            else needleEl.dataset.angle = String(angle);
+          };
+          requestAnimationFrame(animate);
+        }
+
+        // Details bars
+        const total = (articles||[]).length || 1;
         const bars=document.getElementById('spec-bars');
         const mkRow=(name,cls,p)=>`
           <div>${name}</div>
@@ -570,7 +589,6 @@
   </script>
 </body>
 </html>
-
 
 
 
