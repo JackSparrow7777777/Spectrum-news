@@ -96,7 +96,7 @@
     .center-bias{background: var(--center-color);} .center-right-bias{background: var(--center-right-color);}
     .right-bias{background: var(--right-color);}
 
-    /* Reliability slider (Violet → Green → Yellow) */
+    /* Reliability slider */
     .slider {
       width: 100%;
       height: 5px;
@@ -141,7 +141,7 @@
     .view-option.active { background: var(--primary-color); color: #fff; }
 
     /* News grid */
-    #news-container { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    #news-container { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: stretch; }
     .cards-2 #news-container { grid-template-columns: repeat(2, 1fr); }
     .cards-3 #news-container { grid-template-columns: repeat(3, 1fr); }
 
@@ -149,6 +149,8 @@
       background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow);
       overflow: hidden; transition: transform 0.18s ease, box-shadow 0.18s ease;
       content-visibility: auto; contain-intrinsic-size: 600px;
+      /* NEW: make rows parallel by stretching to grid row height */
+      display: flex; flex-direction: column; height: 100%;
     }
     .article-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
     .article-card:focus-visible { outline: 3px solid var(--primary-color); outline-offset: 3px; }
@@ -175,50 +177,21 @@
     .bias-badge.right{background:#fde9e7;color:#E74C3C}
     .bias-badge.unknown{background:#eee;color:#666}
 
-    /* ==== Uniform media box ==== */
-    .thumb-frame {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      background: #f2f2f2;
-      overflow: hidden;
-      border-radius: 12px;
-    }
-    .thumb-frame img.thumb {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      display: block;
-      object-fit: cover;
-      object-position: center;
-      -webkit-user-select: none;
-      user-select: none;
-    }
+    /* Uniform media box */
+    .thumb-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #f2f2f2; overflow: hidden; border-radius: 12px; }
+    .thumb-frame img.thumb { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; object-position: center; -webkit-user-select: none; user-select: none; }
 
-    /* ==== LIST VIEW CUSTOMIZATIONS ==== */
+    /* LIST view tweaks */
     .cards-1 #news-container { justify-items: center; }
     .cards-1 .article-card  { width: min(92%, 920px); }
-
-    .cards-1 .article-card .thumb-frame{
-      width: 100%;
-      margin: 0;
-      aspect-ratio: 2 / 1;
-      border-radius: 12px;
-      overflow: hidden;
-      background: transparent;
-    }
-    .cards-1 .article-card .thumb-frame img.thumb{
-      object-fit: cover !important;
-      object-position: center 35%;
-      background: transparent !important;
-    }
+    .cards-1 .article-card .thumb-frame{ width: 100%; margin: 0; aspect-ratio: 2 / 1; border-radius: 12px; overflow: hidden; background: transparent; }
+    .cards-1 .article-card .thumb-frame img.thumb{ object-fit: cover !important; object-position: center 35%; background: transparent !important; }
 
     .article-content { padding: 12px 14px; }
     .article-title   { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; line-height: 1.35; }
     .article-meta    { display: flex; justify-content: space-between; gap: 6px; color: #666; font-size: 13px; margin-bottom: 10px; }
     .article-description { color: #444; font-size: 14px; margin-bottom: 12px; }
-    .article-actions { display: flex; justify-content: space-between; align-items: center; }
+    .article-actions { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
     .link-btn { color: var(--primary-color); font-weight: 600; padding: 8px 10px; border-radius: 6px; background: #f0f6ff; }
 
     .loading { text-align: center; padding: 28px; color: #666; }
@@ -241,21 +214,6 @@
       header .container { flex-direction: column; align-items: stretch; }
       .search-form { width: 100%; }
       .cards-2 #news-container, .cards-3 #news-container { grid-template-columns: 1fr; }
-    }
-
-    /* ===== Left vs Right layout (same visual as 2-up) ===== */
-    #news-container.lr-two {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 18px;
-    }
-    #news-container.lr-two .lr-col {
-      display: grid;
-      grid-auto-rows: min-content;
-      gap: 18px;
-    }
-    @media (max-width: 1024px) {
-      #news-container.lr-two { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -289,8 +247,6 @@
             <option value="au">Australia</option>
             <option value="in">India</option>
           </select>
-
-          <!-- Language filter removed (always English) -->
 
           <h3>Articles</h3>
           <select id="max-select" class="select">
@@ -383,7 +339,6 @@
           <button class="view-option" data-view="1" role="tab" aria-selected="false">List</button>
           <button class="view-option active" data-view="2" role="tab" aria-selected="true">2-up</button>
           <button class="view-option" data-view="3" role="tab" aria-selected="false">3-up</button>
-          <!-- NEW: Left vs Right -->
           <button class="view-option" data-view="lr" role="tab" aria-selected="false">Left vs Right</button>
         </div>
 
@@ -411,6 +366,7 @@
         this.autoRefreshMs = 30 * 60 * 1000;
         this.viewRoot = document.body;
         this.viewMode = '2'; // '1' | '2' | '3' | 'lr'
+        this.lastArticles = []; // NEW: cache for instant view switches
         this.debouncedLoadNews = this.debounce(() => this.loadNews(), 400);
         this.bindUI();
         this.startAutoRefresh();
@@ -430,11 +386,11 @@
           this.loadNews();
         });
 
-        // Basic selects (debounced) — language-select removed
+        // selects (language removed)
         ['country-select','max-select','time-range']
           .forEach(id => document.getElementById(id).addEventListener('change', () => this.debouncedLoadNews()));
 
-        // Reliability slider on change (not every pixel)
+        // Reliability slider
         document.getElementById('reliability').addEventListener('change', () => this.debouncedLoadNews());
 
         // Balanced + Cluster toggles
@@ -463,7 +419,7 @@
           });
         });
 
-        // View options (adds 'lr' mode)
+        // View options (instant re-render; no refetch)
         const viewBtns = document.querySelectorAll('.view-option');
         viewBtns.forEach(btn => {
           btn.addEventListener('click', () => {
@@ -479,7 +435,8 @@
             else if (mode === '3') this.viewRoot.classList.add('cards-3');
             else if (mode === 'lr') this.viewRoot.classList.add('cards-2'); // same sizing as 2-up
 
-            this.debouncedLoadNews();
+            // INSTANT switch: re-render from cache
+            this.renderArticles(this.lastArticles);
           });
         });
       }
@@ -501,15 +458,13 @@
           const q = (document.getElementById('search-input').value || 'latest news').trim();
           const country = document.getElementById('country-select').value;
           const max = document.getElementById('max-select').value;
-
-          // Always English
-          const lang = 'en';
+          const lang = 'en'; // always English
 
           const params = new URLSearchParams({ q, country, lang, max, expand: 'content' });
           if (this.currentCategory) params.set('category', this.currentCategory);
           if (this.currentBias && this.currentBias !== 'default') params.set('bias', this.currentBias);
 
-          // Time range (server will filter; GNews never sees from/to)
+          // Time range (server will filter)
           const tr = document.getElementById('time-range').value;
           if (tr !== 'any') {
             let ms = 0;
@@ -534,7 +489,9 @@
           const data = await res.json();
           if (data.error) throw new Error(data.error);
 
-          this.renderArticles(data.articles || []);
+          // cache & render
+          this.lastArticles = data.articles || [];
+          this.renderArticles(this.lastArticles);
 
           if (data.quotaExceeded) {
             statusText.textContent = `Showing cached results — GNews daily quota reached`;
@@ -556,7 +513,6 @@
         const el = document.getElementById('news-container');
 
         if (!articles || !articles.length) {
-          el.classList.remove('lr-two');
           el.innerHTML = `<div class="loading" style="padding:36px;">No articles found. Try a different search or broaden the time range.</div>`;
           return;
         }
@@ -566,55 +522,53 @@
           return;
         }
 
-        el.classList.remove('lr-two');
+        // default rendering (list/2-up/3-up)
         el.innerHTML = articles.map(a => this.cardHTML(a)).join('');
 
         const firstImg = el.querySelector('.thumb');
         if (firstImg) { firstImg.loading = 'eager'; firstImg.setAttribute('fetchpriority', 'high'); }
 
-        el.querySelectorAll('.article-card').forEach(card => {
-          card.addEventListener('click', () => {
-            const url = card.getAttribute('data-url');
-            if (url) window.open(url, '_blank', 'noopener,noreferrer');
-          });
-          card.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              const url = card.getAttribute('data-url');
-              if (url) window.open(url, '_blank', 'noopener,noreferrer');
-            }
-          });
-        });
-        el.querySelectorAll('.link-btn').forEach(btn => btn.addEventListener('click', (e) => e.stopPropagation()));
+        this.attachCardHandlers(el);
       }
 
-      // NEW: Left vs Right renderer (same card UI, 2 columns)
+      // NEW: Left vs Right renderer using paired rows (keeps rows parallel)
       renderLeftRight(articles) {
-        const container = document.getElementById('news-container');
-        container.classList.add('lr-two');
+        const el = document.getElementById('news-container');
 
-        const LEFT_BIASES  = new Set(['left','lean-left']);
-        const RIGHT_BIASES = new Set(['right','lean-right']);
+        const LEFT  = new Set(['left','lean-left']);
+        const RIGHT = new Set(['right','lean-right']);
         const byTimeDesc = (a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
 
-        const leftPool  = articles.filter(a => LEFT_BIASES.has(a.bias)).sort(byTimeDesc);
-        const rightPool = articles.filter(a => RIGHT_BIASES.has(a.bias)).sort(byTimeDesc);
+        const leftPool  = articles.filter(a => LEFT.has(a.bias)).sort(byTimeDesc);
+        const rightPool = articles.filter(a => RIGHT.has(a.bias)).sort(byTimeDesc);
 
         const maxSel = parseInt(document.getElementById('max-select').value, 10) || 10;
         const perSideTarget = Math.max(1, Math.floor(maxSel / 2));
 
-        const leftTake  = leftPool.slice(0,  perSideTarget);
-        const rightTake = rightPool.slice(0, perSideTarget);
+        const L = leftPool.slice(0, perSideTarget);
+        const R = rightPool.slice(0, perSideTarget);
 
-        const leftHTML  = leftTake.map(a => this.cardHTML(a)).join('');
-        const rightHTML = rightTake.map(a => this.cardHTML(a)).join('');
+        // Pair rows: [L0,R0],[L1,R1], ...
+        const pairs = Math.min(L.length, R.length);
+        const html = [];
+        for (let i = 0; i < pairs; i++) {
+          html.push(this.cardHTML(L[i]));
+          html.push(this.cardHTML(R[i]));
+        }
+        // trailing side (if any) simply continues below (acceptable per spec)
+        for (let i = pairs; i < L.length; i++) html.push(this.cardHTML(L[i]));
+        for (let i = pairs; i < R.length; i++) html.push(this.cardHTML(R[i]));
 
-        container.innerHTML = `
-          <div class="lr-col lr-left">${leftHTML || ''}</div>
-          <div class="lr-col lr-right">${rightHTML || ''}</div>
-        `;
+        el.innerHTML = html.join('');
 
-        container.querySelectorAll('.article-card').forEach(card => {
+        const firstImg = el.querySelector('.thumb');
+        if (firstImg) { firstImg.loading = 'eager'; firstImg.setAttribute('fetchpriority', 'high'); }
+
+        this.attachCardHandlers(el);
+      }
+
+      attachCardHandlers(rootEl) {
+        rootEl.querySelectorAll('.article-card').forEach(card => {
           card.addEventListener('click', () => {
             const url = card.getAttribute('data-url');
             if (url) window.open(url, '_blank', 'noopener,noreferrer');
@@ -627,10 +581,7 @@
             }
           });
         });
-        container.querySelectorAll('.link-btn').forEach(btn => btn.addEventListener('click', (e) => e.stopPropagation()));
-
-        const firstImg = container.querySelector('.thumb');
-        if (firstImg) { firstImg.loading = 'eager'; firstImg.setAttribute('fetchpriority', 'high'); }
+        rootEl.querySelectorAll('.link-btn').forEach(btn => btn.addEventListener('click', (e) => e.stopPropagation()));
       }
 
       cardHTML(article) {
@@ -704,3 +655,4 @@
   </script>
 </body>
 </html>
+
