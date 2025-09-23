@@ -92,6 +92,14 @@
       fill:#666;
     }
 
+    /* Spectrumeter tick labels: match Bias labels (small text under circles) */
+.spectrumeter .spec-ticks {
+  font-family: inherit;
+  font-size: 12px;       /* same as <small> default in your UI */
+  font-weight: 400;      /* same weight as the bias labels */
+  fill: var(--text-color); /* same color as general text (bias labels inherit this) */
+}
+
     .see-more{align-self:flex-start;background:#f0f6ff;color:#2054d2;padding:6px 8px;border-radius:8px;font-weight:600}
     .spec-details{display:none;margin-top:8px}
     .spec-details.open{display:block}
@@ -266,14 +274,14 @@
                 <path d="M20,92 A90,90 0 0,1 200,92" fill="none" stroke="#eee" stroke-width="16" stroke-linecap="round"/>
                 <path d="M20,92 A90,90 0 0,1 200,92" fill="none" stroke="url(#specGradient)" stroke-width="16" stroke-linecap="round"/>
 
-                <!-- ADD: tick labels styled via CSS class -->
-                <g text-anchor="middle">
-                  <text class="tick-label" x="32"  y="116">Left</text>
-                  <text class="tick-label" x="76"  y="116">CL</text>
-                  <text class="tick-label" x="110" y="116">Center</text>
-                  <text class="tick-label" x="144" y="116">CR</text>
-                  <text class="tick-label" x="188" y="116">Right</text>
-                </g>
+               <!-- Labels -->
+<g class="spec-ticks" text-anchor="middle">
+  <text x="32"  y="116">Left</text>
+  <text x="76"  y="116">CL</text>
+  <text x="110" y="116">Center</text>
+  <text x="144" y="116">CR</text>
+  <text x="188" y="116">Right</text>
+</g>
 
                 <!-- Needle -->
                 <g id="spec-needle">
