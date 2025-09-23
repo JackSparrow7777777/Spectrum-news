@@ -490,12 +490,16 @@
         const total=(articles||[]).length||1;
 
         // pick bucket with maximum share
-        let maxIdx=0, maxVal=-1;
-        buckets.forEach((b,i)=>{ if(counts[b]>maxVal){ maxVal=counts[b]; maxIdx=i; } });
+let maxIdx = 0, maxVal = -1;
+buckets.forEach((b, i) => { if (counts[b] > maxVal) { maxVal = counts[b]; maxIdx = i; } });
 
-        // map buckets to sweep across the semicircle: Left (-180°) → Center (-90°) → Right (0°)
-const angles = [-180, -135, -90, -45, 0];  // Left, CL, Center, CR, Right
-needle.style.transform = `rotate(${angles[maxIdx]}deg)`;
+// map buckets across the semicircle: Left (-180°) → Center (-90°) → Right (0°)
+const needleEl = document.getElementById('spec-needle');
+if (needleEl) {
+  const angles = [-180, -135, -90, -45, 0]; // Left, CL, Center, CR, Right
+  needleEl.style.transform = `rotate(${angles[maxIdx]}deg)`;
+}
+
 
 
         // summary chips
