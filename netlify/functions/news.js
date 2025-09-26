@@ -1,17 +1,17 @@
 'use strict';
 
 /**
- * GNews API Serverless Function
- * - balanced-view v3 + bucket-targeted backfill + topic search fix
- * - BACKFILL BUDGET CAPS + REQUEST TIMEOUTS
- * - clustering:
- *    cluster=off    -> no clustering
- *    cluster=title  -> simple title-key dedupe (legacy)
- *    cluster=smart  -> semantic clustering (entities + fuzzy title + temporal + URL hints)
+ * GNews API Serverless Function (balanced-view v3 + bucket-targeted backfill + topic search fix)
+ *
+ * Key behaviors:
+ *  - Always include `q` (even for top-headlines) so keywords apply inside topics.
+ *  - When `balanced=1`, we overfetch AND actively backfill under-supplied buckets
+ *    (left/lean-left/center/lean-right/right) by issuing site-targeted searches per domain.
+ *  - Smarter sampler: prefers filling from still-under-target buckets to avoid CL domination.
  */
 
 const cache = new Map();
-const CACHE_DURATION = 30 * 60 * 1000;   // 30 min
+const CACHE_DURATION = 30 * 60 * 1000;
 const API_BASE = 'https://gnews.io/api/v4';
 const PER_REQ_CAP = 25;
 
@@ -66,18 +66,8 @@ const RELIABILITY_SCORES = {
 };
 const DEFAULT_RELIABILITY = 50;
 
-/* -------- Backfill budget caps -------- */
-const BACKFILL_DOMAIN_LIMIT = parseInt(process.env.BACKFILL_DOMAIN_LIMIT || '5', 10); // per bucket
-const BACKFILL_PAGES        = parseInt(process.env.BACKFILL_PAGES || '1', 10);       // per domain
-const BACKFILL_PER_PAGE     = parseInt(process.env.BACKFILL_PER_PAGE || '15', 10);   // per page
-const MAX_FETCH_BUDGET      = parseInt(process.env.MAX_FETCH_BUDGET || '12', 10);    // total external calls per request
-
 /* -------- Helpers -------- */
-const STOP = new Set([
-  'the','a','an','to','of','in','on','and','or','as','for','at','by','with','from',
-  'about','amid','over','after','before','into','out','up','down','is','are','be','was','were',
-  'that','this','those','these','it','its','their','his','her','you','i','we','they','but'
-]);
+const STOP = new Set(['the','a','an','to','of','in','on','and','or','as','for','at','by','with','from','about','amid','over','after','before','into','out','up','down']);
 
 function parseHostParts(u) {
   try {
@@ -117,109 +107,14 @@ function titleKey(s) {
   return uniq.sort().join('-');
 }
 
-/* -------- Similarity utilities for smart clustering -------- */
-function tokenize(str) {
-  return (str || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter(w => w && !STOP.has(w));
-}
-function ngrams(tokens, n=2) {
-  const arr = [];
-  for (let i=0; i<=tokens.length-n; i++) arr.push(tokens.slice(i,i+n).join(' '));
-  return arr;
-}
-function cosineSim(aVec, bVec) {
-  let dot=0, aN=0, bN=0;
-  const seen = new Set([...Object.keys(aVec), ...Object.keys(bVec)]);
-  for (const k of seen) {
-    const av=aVec[k]||0, bv=bVec[k]||0;
-    dot += av*bv; aN += av*av; bN += bv*bv;
+async function call(url) {
+  const resp = await fetch(url);
+  if (resp.status === 403) throw new Error('403 quota/plan restriction from GNews');
+  if (!resp.ok) {
+    const txt = await resp.text().catch(()=> '');
+    throw new Error(`GNews ${resp.status} ${resp.statusText} ${txt}`.trim());
   }
-  const denom = Math.sqrt(aN)*Math.sqrt(bN);
-  return denom ? (dot/denom) : 0;
-}
-function bagify(tokens) {
-  const v = {};
-  for (const t of tokens) v[t] = (v[t]||0) + 1;
-  return v;
-}
-function titleSimilarity(a, b) {
-  const ta = tokenize(a);
-  const tb = tokenize(b);
-  if (!ta.length || !tb.length) return 0;
-  // mix of unigram + bigram cosine
-  const ua = bagify(ta), ub = bagify(tb);
-  const ba = bagify(ngrams(ta,2).concat(ngrams(ta,3)));
-  const bb = bagify(ngrams(tb,2).concat(ngrams(tb,3)));
-  return 0.6*cosineSim(ua,ub) + 0.4*cosineSim(ba,bb);
-}
-function extractEntities(text) {
-  // simple proper noun heuristic from original case
-  const m = (text || '').match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/g) || [];
-  return new Set(m.map(s=>s.toLowerCase()));
-}
-function jaccard(set1, set2) {
-  if (!set1.size && !set2.size) return 0;
-  let inter=0;
-  for (const x of set1) if (set2.has(x)) inter++;
-  const union = set1.size + set2.size - inter;
-  return union ? inter/union : 0;
-}
-function temporalSimilarity(aIso, bIso) {
-  const ta = Date.parse(aIso||0), tb = Date.parse(bIso||0);
-  if (!isFinite(ta) || !isFinite(tb)) return 0.2; // shrug
-  const diffHrs = Math.abs(ta - tb) / (1000*60*60);
-  // full score if within 6h, decays to ~0 by ~72h
-  if (diffHrs <= 6) return 1;
-  if (diffHrs >= 72) return 0;
-  return 1 - (diffHrs - 6) / (72 - 6);
-}
-function sourceSimilarity(aSource, bSource) {
-  const a = (aSource?.name||'').toLowerCase();
-  const b = (bSource?.name||'').toLowerCase();
-  if (!a || !b) return 0.2;
-  return a === b ? 1 : 0.2; // small bonus if same outlet
-}
-function urlHints(article) {
-  const url = article?.url || '';
-  const parts = url.split(/[\/\?#]/).filter(p => p && p.length>2 && !/^(www|com|org|net|html?|php|amp)$/i.test(p));
-  const idMatches = [];
-  const patterns = [
-    /story[_-]?(\d+)/i,
-    /article[_-]?(\d+)/i,
-    /(\d{4}\/\d{2}\/\d{2})/,
-    /([a-z]+(?:-[a-z]+){2,})/i
-  ];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m && m[1]) idMatches.push(m[1].toLowerCase());
-  }
-  return new Set(parts.concat(idMatches).map(s => s.toLowerCase()));
-}
-function urlSimilarity(a, b) {
-  const sa = urlHints(a), sb = urlHints(b);
-  return jaccard(sa, sb);
-}
-
-/* Budget is reset per request inside handler */
-let fetchBudget = Infinity;
-
-async function call(url, { timeoutMs = 8000 } = {}) {
-  if (fetchBudget <= 0) return { articles: [] };
-  const ac = new AbortController();
-  const timer = setTimeout(()=>ac.abort(), timeoutMs);
-  try {
-    fetchBudget--;
-    const resp = await fetch(url, { signal: ac.signal });
-    if (resp.status === 403) throw new Error('403 quota/plan restriction from GNews');
-    if (!resp.ok) {
-      const txt = await resp.text().catch(()=> '');
-      throw new Error(`GNews ${resp.status} ${resp.statusText} ${txt}`.trim());
-    }
-    return resp.json();
-  } finally { clearTimeout(timer); }
+  return resp.json();
 }
 
 function normArticle(a) {
@@ -265,80 +160,6 @@ function partitionByBias(articles) {
   return { bins, unknown };
 }
 
-/* ----- SMART CLUSTERING ----- */
-// Composite similarity with bounded cost (O(n^2) but guarded by caps)
-function smartCluster(articles, options = {}) {
-  const {
-    threshold = 0.68,
-    maxPairs = 15000,      // safety: do not compute pairwise beyond this
-    maxArticles = 400      // another safety: if pool is huge, pre-trim by recency
-  } = options;
-
-  if (articles.length <= 1) return articles;
-
-  // trim newest-first if too many
-  const pool = articles.slice().sort((a,b)=>Date.parse(b.publishedAt||0)-Date.parse(a.publishedAt||0))
-                       .slice(0, Math.min(maxArticles, articles.length));
-
-  // Precompute metadata
-  const meta = pool.map(a => ({
-    ents: extractEntities(a.title + ' ' + (a.description || '')),
-    urlSet: urlHints(a),
-    t: Date.parse(a.publishedAt || 0) || 0,
-  }));
-
-  // Union-Find to build clusters
-  const parent = Array(pool.length).fill(0).map((_,i)=>i);
-  const find = (x)=> parent[x]===x?x:(parent[x]=find(parent[x]));
-  const unite = (a,b)=>{ a=find(a); b=find(b); if(a!==b) parent[b]=a; };
-
-  let computed = 0;
-  for (let i=0;i<pool.length;i++){
-    for (let j=i+1;j<pool.length;j++){
-      if (computed++ > maxPairs) break;
-      const A = pool[i], B = pool[j];
-      // Weighted composite
-      const sTitle = titleSimilarity(A.title, B.title);                 // 0..1
-      const sEnt   = jaccard(meta[i].ents, meta[j].ents);               // 0..1
-      const sTemp  = temporalSimilarity(A.publishedAt, B.publishedAt);  // 0..1
-      const sUrl   = jaccard(meta[i].urlSet, meta[j].urlSet);           // 0..1
-
-      const composite = 0.45*sTitle + 0.30*sEnt + 0.20*sTemp + 0.05*sUrl;
-      if (composite >= threshold) unite(i,j);
-    }
-    if (computed > maxPairs) break;
-  }
-
-  // Group by root and pick representative (newest, then highest reliability)
-  const groups = new Map();
-  for (let i=0;i<pool.length;i++){
-    const r = find(i);
-    if (!groups.has(r)) groups.set(r, []);
-    groups.get(r).push(pool[i]);
-  }
-
-  const reps = [];
-  for (const grp of groups.values()){
-    grp.sort((a,b)=>{
-      const tb = Date.parse(b.publishedAt||0), ta = Date.parse(a.publishedAt||0);
-      if (tb !== ta) return tb - ta;
-      const rb = (b.reliabilityScore ?? DEFAULT_RELIABILITY);
-      const ra = (a.reliabilityScore ?? DEFAULT_RELIABILITY);
-      return rb - ra;
-    });
-    reps.push(grp[0]);
-  }
-
-  // Keep original items that weren't in the trimmed pool (rare) by appending if unique by URL
-  const used = new Set(reps.map(x=>x.url));
-  for (const a of articles) {
-    if (used.size >= reps.length + 100) break; // do not explode
-    if (!used.has(a.url) && !pool.find(p=>p.url===a.url)) used.add(a.url), reps.push(a);
-  }
-
-  return reps;
-}
-
 /* -------- Main handler -------- */
 exports.handler = async function (event) {
   const headers = {
@@ -353,13 +174,9 @@ exports.handler = async function (event) {
   const API_KEY = process.env.GNEWS_API_KEY || '';
   if (!API_KEY) return { statusCode: 500, headers, body: JSON.stringify({ error: 'Missing GNEWS_API_KEY env var' }) };
 
-  // Reset budget per request
-  fetchBudget = MAX_FETCH_BUDGET;
-
   try {
     const qp = event.queryStringParameters || {};
-    const qRaw     = String(qp.q || 'latest news').trim() || 'latest news';
-    const q        = qRaw.slice(0, 200); // guard against silly-long queries
+    const q        = String(qp.q || 'latest news').trim() || 'latest news';
     const lang     = String(qp.lang || 'en');
     const country  = String(qp.country || 'us');
     const maxReq   = Math.max(1, Math.min(parseInt(qp.max || '10', 10) || 10, 100));
@@ -372,7 +189,7 @@ exports.handler = async function (event) {
     const doBiasFilter = !!bias && bias !== 'default';
     const minReliability = Math.max(0, Math.min(parseInt(qp.minReliability || '0', 10) || 0, 100));
     const balanced = qp.balanced === '1';
-    const clusterMode = String(qp.cluster || '').toLowerCase(); // off | title | smart
+    const clusterMode = String(qp.cluster || '').toLowerCase();
 
     if (!ALLOWED_CATEGORIES.has(category)) category = '';
 
@@ -393,13 +210,13 @@ exports.handler = async function (event) {
       s.append('apikey', API_KEY);
       s.append('lang', lang);
       s.append('expand', expand);
-      if (q) s.append('q', q);           // ✅ topic search fix: always include q
+      if (q) s.append('q', q);           // ✅ topic search fix
       if (cat) s.append('topic', cat);
       if (country) s.append('country', country);
       return s;
     };
 
-    /* ---- Fetch helpers (count against budget via call()) ---- */
+    /* ---- Fetch helpers ---- */
     async function fetchPages(cat, pages, perPage) {
       const endpoint = endpointFor(cat);
       const tasks = [];
@@ -415,13 +232,14 @@ exports.handler = async function (event) {
       return results.flatMap(r => Array.isArray(r.articles) ? r.articles : []);
     }
 
-    // Site-targeted search to backfill a domain (also counts against budget)
+    // Site-targeted search to backfill a domain
     async function fetchForDomain(domain, pages = 1, perPage = 20) {
       const u = new URL(`${API_BASE}/search`);
       const s = new URLSearchParams();
       s.append('apikey', API_KEY);
       s.append('lang', lang);
       s.append('expand', expand);
+      // site:domain query to nudge GNews towards that outlet
       const siteQ = q ? `${q} site:${domain}` : `site:${domain}`;
       s.append('q', siteQ);
       if (country) s.append('country', country);
@@ -440,7 +258,7 @@ exports.handler = async function (event) {
     /* ---- Strategy ---- */
     const overFetchFactor =
       balanced ? 3
-      : (doBiasFilter || minReliability > 0 || (clusterMode === 'title' || clusterMode === 'smart') ? 1.5 : 1);
+      : (doBiasFilter || minReliability > 0 || clusterMode === 'title' ? 1.5 : 1);
 
     const rawTarget = Math.min(100, Math.max(maxReq, Math.ceil(maxReq * overFetchFactor)));
 
@@ -451,11 +269,12 @@ exports.handler = async function (event) {
     let supplemental = [];
     if (balanced && !category) {
       const picks = ['world','business','technology'];
-      const res = await Promise.all(picks.map(t => fetchPages(t, 1, 20)));
+      const tasks = picks.map(t => fetchPages(t, 1, 20));
+      const res = await Promise.all(tasks);
       supplemental = res.flat();
     }
 
-    // Merge -> normalize
+    // Merge -> normalize -> local filters
     let pool = dedupeKeepNewest([...primary, ...supplemental]).map(normArticle);
 
     // Time window
@@ -469,8 +288,7 @@ exports.handler = async function (event) {
     }
     // Reliability
     if (minReliability > 0) pool = pool.filter(a => (a.reliabilityScore ?? DEFAULT_RELIABILITY) >= minReliability);
-
-    // Clustering
+    // Cluster
     if (clusterMode === 'title') {
       const seenKeys = new Set();
       pool = pool.filter(a => {
@@ -478,13 +296,9 @@ exports.handler = async function (event) {
         if (seenKeys.has(k)) return false;
         seenKeys.add(k); return true;
       });
-    } else if (clusterMode === 'smart') {
-      pool = smartCluster(pool, { threshold: 0.68, maxPairs: 15000, maxArticles: 400 });
-      // ensure stability post-cluster
-      pool = dedupeKeepNewest(pool);
     }
 
-    /* -------- Bucket-targeted backfill when balanced ON (with budget caps) -------- */
+    /* -------- Bucket-targeted backfill when balanced ON -------- */
     if (balanced) {
       const targetPerBucket = Math.ceil(maxReq / BUCKETS.length); // equal target
       const { bins } = partitionByBias(pool);
@@ -493,19 +307,24 @@ exports.handler = async function (event) {
       const backfillTasks = [];
       for (const b of BUCKETS) {
         if (need[b] <= 0) continue;
-        const domains = (BIAS_BUCKETS[b] || []).slice(0, BACKFILL_DOMAIN_LIMIT);
+        const domains = (BIAS_BUCKETS[b] || []).slice(0, 10); // cap to avoid explosion
+        // 2 pages * 20 per domain across first few domains
+        const perDomainPages = 2;
+        const perDomainMax   = 20;
         for (const d of domains) {
-          if (fetchBudget <= 0) break;
-          backfillTasks.push(fetchForDomain(d, BACKFILL_PAGES, BACKFILL_PER_PAGE));
-          if (backfillTasks.length >= MAX_FETCH_BUDGET) break;
+          backfillTasks.push(fetchForDomain(d, perDomainPages, perDomainMax));
+          // Stop queuing once we've queued roughly what's needed * 2 (buffer)
+          if (backfillTasks.length * perDomainPages * perDomainMax >= need[b] * 2 * PER_REQ_CAP) break;
         }
-        if (fetchBudget <= 0) break;
       }
 
       if (backfillTasks.length) {
         const results = await Promise.all(backfillTasks);
-        const extra = dedupeKeepNewest(results.flat()).map(normArticle).filter(a => BUCKETS.includes(a.bias));
-        pool = dedupeKeepNewest([...pool, ...extra]);
+        const extra = dedupeKeepNewest(results.flat()).map(normArticle);
+        // Keep only those that actually fall into a recognized bucket
+        const extraByBias = extra.filter(a => BUCKETS.includes(a.bias));
+        // Merge and re-dedupe with existing pool
+        pool = dedupeKeepNewest([...pool, ...extraByBias]);
       }
     }
 
@@ -540,10 +359,7 @@ exports.handler = async function (event) {
     return { statusCode: 200, headers: { ...headers, 'X-Cache': 'MISS' }, body: JSON.stringify(payload) };
 
   } catch (err) {
-    const friendly = /403/.test(err.message)
-      ? 'API quota/plan limit reached. Try fewer articles, turn off Balanced view, or wait before retrying.'
-      : 'We hit a temporary error fetching news.';
-    const body = JSON.stringify({ error: friendly, message: err.message, timestamp: new Date().toISOString() });
+    const body = JSON.stringify({ error: 'Internal server error', message: err.message, timestamp: new Date().toISOString() });
     return { statusCode: 500, headers, body };
   }
 };
@@ -554,7 +370,7 @@ function balancedSampler(pool, maxReq) {
   const target = Math.ceil(maxReq / BUCKETS.length);
 
   // Queues per bucket
-  const queues = BUCKETS.map(b => (bins[b] ? bins[b].slice() : []));
+  const queues = BUCKETS.map(b => bins[b] || []);
 
   // First pass: round-robin pick up to target from each bucket
   const picks = [];
@@ -574,6 +390,7 @@ function balancedSampler(pool, maxReq) {
   // Second pass: fill remaining slots favoring still under-target buckets
   function bucketCount(bias) { return picks.filter(a => a.bias === bias).length; }
   while (picks.length < maxReq) {
+    // Which buckets are still below target?
     const under = BUCKETS.filter(b => bucketCount(b) < target);
     if (!under.length) break;
 
@@ -610,4 +427,5 @@ function balancedSampler(pool, maxReq) {
 
   return picks.slice(0, maxReq);
 }
+
 
