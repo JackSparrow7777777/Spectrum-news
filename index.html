@@ -242,12 +242,10 @@
                   <text x="188" y="116">Right</text>
                 </g>
                 <!-- Needle -->
-                <g id="spec-needle" data-angle="0">
-  <circle cx="110" cy="92" r="6" fill="#444"/>
-  <!-- straight up from the pivot (110,92) to the arch -->
-  <line x1="110" y1="92" x2="110" y2="8" stroke="#444" stroke-width="2" stroke-linecap="round"/>
-</g>
-
+                <g id="spec-needle">
+                  <circle cx="110" cy="92" r="6" fill="#444"/>
+                  <line x1="110" y1="92" x2="170" y2="78" stroke="#444" stroke-width="2" stroke-linecap="round"/>
+                </g>
               </svg>
 
               <button class="see-more" id="spec-toggle" aria-expanded="false">See details</button>
@@ -500,31 +498,29 @@
 
         const labeledTotal = buckets.reduce((s,b)=>s+counts[b],0);
 
-        // -90° = Left edge, 0° = Center (straight up), +90° = Right edge
-const pos = { left:-90, 'lean-left':-45, center:0, 'lean-right':45, right:90 };
+        const pos = { left:-180, 'lean-left':-135, center:-90, 'lean-right':-45, right:0 };
 
-        let angle = 0; // default to center if nothing labeled
-if (labeledTotal > 0) {
-  let sum = 0;
-  for (const b of buckets) sum += (counts[b] / labeledTotal) * pos[b];
-  angle = Math.max(-90, Math.min(90, sum)); // clamp to arc
-}
+        let angle = -90;
+        if(labeledTotal > 0){
+          let sum = 0;
+          for(const b of buckets) sum += (counts[b] / labeledTotal) * pos[b];
+          angle = sum;
+        }
 
-const needleEl = document.getElementById('spec-needle');
-if (needleEl) {
-  const prev = parseFloat(needleEl.dataset.angle || '0'); // start from 0°
-  const duration = 180;
-  const start = performance.now();
-  const animate = (now)=>{
-    const p = Math.min(1, (now - start) / duration);
-    const a = prev + (angle - prev) * p;
-    needleEl.setAttribute('transform', `rotate(${a} 110 92)`);
-    if (p < 1) requestAnimationFrame(animate);
-    else needleEl.dataset.angle = String(angle);
-  };
-  requestAnimationFrame(animate);
-}
-
+        const needleEl = document.getElementById('spec-needle');
+        if(needleEl){
+          const prev = parseFloat(needleEl.dataset.angle || '-90');
+          const duration = 180;
+          const start = performance.now();
+          const animate = (now)=>{
+            const p = Math.min(1,(now-start)/duration);
+            const a = prev + (angle - prev) * p;
+            needleEl.setAttribute('transform', `rotate(${a} 110 92)`);
+            if(p < 1) requestAnimationFrame(animate);
+            else needleEl.dataset.angle = String(angle);
+          };
+          requestAnimationFrame(animate);
+        }
 
         const total = (articles||[]).length || 1;
         const bars=document.getElementById('spec-bars');
