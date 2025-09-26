@@ -242,10 +242,12 @@
                   <text x="188" y="116">Right</text>
                 </g>
                 <!-- Needle -->
-                <g id="spec-needle">
-                  <circle cx="110" cy="92" r="6" fill="#444"/>
-                  <line x1="110" y1="92" x2="170" y2="78" stroke="#444" stroke-width="2" stroke-linecap="round"/>
-                </g>
+                <g id="spec-needle" data-angle="0">
+  <circle cx="110" cy="92" r="6" fill="#444"/>
+  <!-- straight up from the pivot (110,92) to the arch -->
+  <line x1="110" y1="92" x2="110" y2="8" stroke="#444" stroke-width="2" stroke-linecap="round"/>
+</g>
+
               </svg>
 
               <button class="see-more" id="spec-toggle" aria-expanded="false">See details</button>
